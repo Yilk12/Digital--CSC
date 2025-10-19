@@ -1,0 +1,55 @@
+export const DEFAULT_SETTINGS: Record<string, string> = {
+  // General
+  system_name: "Help-Desk System",
+  logo_url: "",
+  default_language: "EN",
+  timezone: "Africa/Addis_Ababa",
+  date_format: "YYYY-MM-DD",
+  time_format: "HH:mm",
+  support_email: "support@example.com",
+  support_phone: "",
+
+  // Users & Auth
+  enable_registration: "true",
+  password_min_length: "8",
+  password_require_complexity: "true",
+  password_expiration_days: "90",
+  mfa_enabled: "false",
+  rbac_enabled: "true",
+  email_verification_required: "true",
+
+  // Notifications
+  email_notifications_enabled: "true",
+  smtp_host: "",
+  smtp_port: "587",
+  smtp_user: "",
+  smtp_pass: "",
+  sms_notifications_enabled: "false",
+  sms_provider: "",
+  sms_api_key: "",
+  push_notifications_enabled: "false",
+
+  // Security & Access
+  session_timeout_minutes: "30",
+  ip_whitelist: "",
+  ip_blacklist: "",
+  audit_logs_enabled: "true",
+  audit_log_retention_days: "180",
+  data_encryption_enabled: "true",
+
+  // Modules / Features
+  features_helpdesk_enabled: "true",
+  features_knowledge_base_enabled: "true",
+  features_chat_enabled: "true",
+  api_keys_rotation_days: "90",
+  integrations_slack_webhook: "",
+  integrations_teams_webhook: "",
+  integrations_jira_base_url: "",
+
+  // Data & Backup
+  backup_schedule: "manual",
+  export_formats: "CSV,JSON,Excel",
+  data_retention_days: "365",
+}
+
+

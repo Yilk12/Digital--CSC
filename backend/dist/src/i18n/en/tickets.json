@@ -1,0 +1,25 @@
+{
+  "created": "Ticket created successfully.",
+  "updated": "Ticket updated successfully.",
+  "deleted": "Ticket deleted successfully.",
+  "not_found": "Ticket not found.",
+  "assigned": "Ticket assigned successfully.",
+  "status": {
+    "OPEN": "Open",
+    "IN_PROGRESS": "In Progress",
+    "RESOLVED": "Resolved",
+    "CLOSED": "Closed"
+  },
+  "priority": {
+    "LOW": "Low",
+    "MEDIUM": "Medium",
+    "HIGH": "High",
+    "URGENT": "Urgent"
+  },
+  "category": {
+    "INCIDENT": "Incident",
+    "REQUEST": "Service Request",
+    "PROBLEM": "Problem",
+    "OTHER": "Other"
+  }
+}

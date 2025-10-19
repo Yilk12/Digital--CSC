@@ -1,0 +1,23 @@
+// Shared Fleet constants
+export const DEPARTMENTS = [
+  "Administration",
+  "Finance",
+  "Human Resources",
+  "Procurement",
+  "Information Technology",
+  "Operations",
+  "Logistics",
+  "Legal",
+  "Communications",
+  "Planning",
+  "Engineering",
+  "Health",
+  "Education",
+  "Agriculture",
+  "Transport",
+  "Security",
+  "Audit",
+  "Compliance",
+  "Customer Service",
+  "Research & Development",
+] as const

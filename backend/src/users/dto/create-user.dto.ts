@@ -1,0 +1,45 @@
+import { IsEmail, IsNotEmpty, MinLength, IsEnum, IsOptional, IsBoolean } from "class-validator"
+import { ApiProperty } from "@nestjs/swagger"
+import { UserRole, UserType } from "@prisma/client"
+import { i18nValidationMessage } from 'nestjs-i18n'
+
+export class CreateUserDto {
+  @ApiProperty({ example: "user@csc.gov.et" })
+  @IsEmail({}, { message: i18nValidationMessage('validation.IS_EMAIL') })
+  @IsNotEmpty({ message: i18nValidationMessage('validation.REQUIRED') })
+  email: string
+
+  @ApiProperty({ example: "John" })
+  @IsNotEmpty({ message: i18nValidationMessage('validation.REQUIRED') })
+  firstName: string
+
+  @ApiProperty({ example: "Doe" })
+  @IsNotEmpty({ message: i18nValidationMessage('validation.REQUIRED') })
+  lastName: string
+
+  @ApiProperty({ example: "password123" })
+  @IsNotEmpty({ message: i18nValidationMessage('validation.REQUIRED') })
+  @MinLength(6, { message: i18nValidationMessage('validation.MIN_LENGTH', { length: 6 }) })
+  password: string
+
+  @ApiProperty({ example: "+251911234567", required: false })
+  @IsOptional()
+  phone?: string
+
+  @ApiProperty({ enum: UserRole, example: UserRole.END_USER })
+  @IsEnum(UserRole, { message: i18nValidationMessage('validation.ENUM') })
+  role: UserRole
+
+  @ApiProperty({ enum: UserType, example: UserType.INTERNAL })
+  @IsEnum(UserType, { message: i18nValidationMessage('validation.ENUM') })
+  userType: UserType
+
+  @ApiProperty({ example: "Human Resources", required: false })
+  @IsOptional()
+  department?: string
+
+  @ApiProperty({ example: true, required: false })
+  @IsOptional()
+  @IsBoolean({ message: i18nValidationMessage('validation.IS_BOOLEAN') })
+  isActive?: boolean
+}

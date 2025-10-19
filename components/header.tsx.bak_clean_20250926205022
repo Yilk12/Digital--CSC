@@ -1,0 +1,627 @@
+ "use client";
+import React from "react";
+import Image from "next/image";
+import { User, LogOut, Settings, Menu, X, Bell } from "lucide-react";
+import { getCurrentUserId, signOut } from "@/app/lib/auth";
+import { useLocalization } from "@/hooks/use-localization";
+import { supportedLanguages } from "@/lib/localization";
+import { usePathname, useRouter } from "next/navigation";
+
+export default function Header() {
+  const router = useRouter()
+  const pathname = usePathname()
+
+
+  const [showLang, setShowLang] = React.useState(false);
+  const [showProfile, setShowProfile] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isLoggedIn, setIsLoggedIn] = React.useState<boolean>(false);
+  const [showNotifications, setShowNotifications] = React.useState(false);
+  const [notifications, setNotifications] = React.useState<
+    Array<{ id: string; title: string; message?: string; time?: string; read?: boolean }>
+  >([
+    { id: "1", title: "New ticket created", message: "User reported an issue.", time: "Just now", read: false },
+    { id: "2", title: "Comment on ticket #123", message: "Please review the update.", time: "5m", read: false },
+    { id: "3", title: "Ticket assigned to you", message: "Ticket #119", time: "30m", read: true },
+  ]);
+  const userName = "Welcome";
+
+  const { language: currentLanguage, setLanguage } = useLocalization();
+
+  // Always show the updated Amharic title
+  const topTitle = "ፌዴራል ሲቪል ሰርቪስ ኮሚሽን";
+
+  React.useEffect(() => {
+    const hasUser = !!getCurrentUserId();
+    setIsLoggedIn(hasUser);
+
+    // Listen for signout from other tabs
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "auth:signout") {
+        setIsLoggedIn(false);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+  const navigationLinks: Array<{ label: string; href: string }> = [];
+
+  // Hide header on login page only
+  if (pathname === "/login") {
+    return <></>;
+  }
+  return (
+    <header
+      style={{
+        width: "100%",
+        background: "transparent",
+        color: "#222e3c",
+        padding: "10px 16px",
+        boxShadow: "none",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        position: "sticky",
+        top: 0,
+        zIndex: 1000,
+        borderBottom: "none",
+      }}
+    >
+      {/* Top-center logo and name */}
+      <div
+        aria-label="Top center branding"
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: 6,
+          transform: "translateX(-50%)",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "6px 10px",
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.9)",
+            backdropFilter: "saturate(150%) blur(2px)",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.10)",
+          }}
+        >
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 8,
+              overflow: "hidden",
+              background: "rgba(255,255,255,0.7)",
+              boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.04)",
+              flex: "0 0 auto",
+            }}
+          >
+            <Image
+              src="/gallery/ecsc.jpg"
+              alt="ECSC Logo"
+              width={56}
+              height={56}
+              priority
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Branding text removed per request */}
+
+      {/* Main Navigation Menu - Horizontal links */}
+      <nav
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 24,
+{{ ... }}
+          flex: "1",
+          justifyContent: "center",
+        }}
+      >
+        {navigationLinks.map((link) => (
+          <a
+            key={link.label}
+            href={link.href}
+            style={{
+              color: "#fff",
+              background: "#1565c0",
+              textDecoration: "none",
+              fontWeight: 600,
+              padding: "10px 18px",
+              borderRadius: "8px",
+              transition: "all 0.2s ease",
+              fontSize: "0.95rem",
+              boxShadow: "0 2px 6px rgba(21,101,192,0.24)",
+            }}
+            onMouseEnter={(e) => {
+              (e.target as HTMLElement).style.background = "#0d47a1";
+              (e.target as HTMLElement).style.color = "#fff";
+            }}
+            onMouseLeave={(e) => {
+              (e.target as HTMLElement).style.background = "#1565c0";
+              (e.target as HTMLElement).style.color = "#fff";
+            }}
+          >
+            {link.label === "Chat" ? "Message" : link.label}
+          </a>
+        ))}
+      </nav>
+
+      {/* Right side controls */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          flex: "0 0 auto",
+        }}
+      >
+        {/* Quick links moved to right side */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginRight: 8 }}>
+          <a
+            href="/about"
+            style={{
+              color: "#1565c0",
+              background: "#e8f1fd",
+              textDecoration: "none",
+              fontWeight: 600,
+              padding: "8px 12px",
+              borderRadius: 6,
+              fontSize: "0.9rem",
+              border: "1px solid #c9defb",
+              transition: "background 0.2s ease, color 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.target as HTMLElement).style.background = "#d9e9ff";
+              (e.target as HTMLElement).style.color = "#0d47a1";
+            }}
+            onMouseLeave={(e) => {
+              (e.target as HTMLElement).style.background = "#e8f1fd";
+              (e.target as HTMLElement).style.color = "#1565c0";
+            }}
+          >
+            About us
+          </a>
+          <a
+            href="/messages"
+            style={{
+              color: "#fff",
+              background: "#1565c0",
+              textDecoration: "none",
+              fontWeight: 600,
+              padding: "8px 12px",
+              borderRadius: 6,
+              fontSize: "0.9rem",
+              boxShadow: "0 2px 6px rgba(21,101,192,0.24)",
+              transition: "background 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.target as HTMLElement).style.background = "#0d47a1";
+            }}
+            onMouseLeave={(e) => {
+              (e.target as HTMLElement).style.background = "#1565c0";
+            }}
+          >
+            Messages
+          </a>
+          <a
+            href="/languages"
+            style={{
+              color: "#1565c0",
+              background: "#e8f1fd",
+              textDecoration: "none",
+              fontWeight: 600,
+              padding: "8px 12px",
+              borderRadius: 6,
+              fontSize: "0.9rem",
+              border: "1px solid #c9defb",
+              transition: "background 0.2s ease, color 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.target as HTMLElement).style.background = "#d9e9ff";
+              (e.target as HTMLElement).style.color = "#0d47a1";
+            }}
+            onMouseLeave={(e) => {
+              (e.target as HTMLElement).style.background = "#e8f1fd";
+              (e.target as HTMLElement).style.color = "#1565c0";
+            }}
+          >
+            Languages
+          </a>
+        </div>
+
+        {/* Notifications */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setShowNotifications((v) => !v)}
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              position: "relative",
+              padding: 8,
+              borderRadius: 8,
+            }}
+            aria-label="Notifications"
+          >
+            <Bell size={22} color="#1565c0" />
+            {notifications.filter((n) => !n.read).length > 0 && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: 2,
+                  right: 2,
+                  background: "#dc3545",
+                  color: "#fff",
+                  borderRadius: 9999,
+                  fontSize: 10,
+                  lineHeight: "14px",
+                  padding: "0 5px",
+                  minWidth: 14,
+                  textAlign: "center",
+                  fontWeight: 700,
+                }}
+              >
+                {Math.min(99, notifications.filter((n) => !n.read).length)}
+              </span>
+            )}
+          </button>
+          {showNotifications && (
+            <div
+              style={{
+                position: "absolute",
+                top: 40,
+                right: 0,
+                width: 360,
+                maxHeight: 420,
+                overflowY: "auto",
+                background: "#fff",
+                color: "#222e3c",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                borderRadius: 10,
+                border: "1px solid #e5e5e5",
+                zIndex: 1200,
+              }}
+              role="region"
+              aria-label="Notifications list"
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 14px",
+                  borderBottom: "1px solid #eee",
+                }}
+              >
+                <div style={{ fontWeight: 700 }}>Notifications</div>
+                <button
+                  onClick={() => {
+                    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+                  }}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#1565c0",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  Mark all as read
+                </button>
+              </div>
+              {notifications.length === 0 ? (
+                <div style={{ padding: 16, fontSize: 14, color: "#6b7280" }}>No notifications</div>
+              ) : (
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {notifications.map((n) => (
+                    <li key={n.id} style={{ borderBottom: "1px solid #f2f2f2" }}>
+                      <button
+                        onClick={() => {
+                          setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+                          setShowNotifications(false);
+                          // TODO: navigate based on notification target
+                        }}
+                        style={{
+                          background: n.read ? "#fff" : "#f8fbff",
+                          border: "none",
+                          textAlign: "left",
+                          width: "100%",
+                          padding: "12px 14px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>{n.title}</div>
+                            {n.message && <div style={{ fontSize: 13, color: "#4b5563" }}>{n.message}</div>}
+                          </div>
+                          {n.time && <div style={{ fontSize: 12, color: "#9ca3af" }}>{n.time}</div>}
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div style={{ padding: 10, textAlign: "center" }}>
+                <a href="/notifications" style={{ color: "#1565c0", textDecoration: "none", fontWeight: 600 }}>
+                  View all
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Language Selector */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setShowLang((v) => !v)}
+            style={{
+              background: "#1565c0",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              padding: "8px 12px",
+              cursor: "pointer",
+              fontSize: "0.9rem",
+              fontWeight: 500,
+            }}
+            aria-label="Select language"
+          >
+            {supportedLanguages.find((l) => l.code === currentLanguage)?.nativeName || currentLanguage.toUpperCase()}
+          </button>
+          {showLang && (
+            <div
+              style={{
+                position: "absolute",
+                top: 40,
+                right: 0,
+                background: "#fff",
+                color: "#222e3c",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                borderRadius: 8,
+                minWidth: 220,
+                zIndex: 200,
+                border: "1px solid #e5e5e5",
+                maxHeight: 320,
+                overflowY: "auto",
+              }}
+            >
+              {supportedLanguages.map((lang) => (
+                <div
+                  key={lang.code}
+                  style={{
+                    padding: "10px 14px",
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    transition: "background 0.2s ease",
+                    background: lang.code === currentLanguage ? "#f0f7ff" : "transparent",
+                    color: lang.code === currentLanguage ? "#1565c0" : undefined,
+                  }}
+                  onClick={() => {
+                    setLanguage(lang.code as any);
+                    setShowLang(false);
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.target as HTMLElement).style.background = "#f5f5f5";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.target as HTMLElement).style.background =
+                      lang.code === currentLanguage ? "#f0f7ff" : "transparent";
+                  }}
+                >
+                  <span>{lang.flag}</span>
+                  <span style={{ flex: 1 }}>
+                    {lang.nativeName} ({lang.name})
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* User Menu / Auth State */}
+        {isLoggedIn ? (
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowProfile((v) => !v)}
+              style={{
+                background: "#1565c0",
+                color: "#fff",
+                border: "none",
+                borderRadius: 6,
+                padding: "8px 16px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: "0.9rem",
+                fontWeight: 500,
+              }}
+              aria-label="User menu"
+            >
+              <User size={16} />
+              <span className="user-menu-text">{userName}</span>
+            </button>
+            {showProfile && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 40,
+                  right: 0,
+                  background: "#fff",
+                  color: "#222e3c",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                  borderRadius: 8,
+                  minWidth: 200,
+                  zIndex: 200,
+                  border: "1px solid #e5e5e5",
+                  padding: "16px",
+                }}
+              >
+                <div style={{ fontWeight: 600, marginBottom: 12, fontSize: "0.95rem" }}>{userName}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <a
+                    href="/dashboard"
+                    style={{
+                      color: "#222e3c",
+                      textDecoration: "none",
+                      padding: "8px 0",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontSize: "0.9rem",
+                    }}
+                  >
+                    <Settings size={16} />
+                    Dashboard
+                  </a>
+                  <a
+                    href="/settings"
+                    style={{
+                      color: "#222e3c",
+                      textDecoration: "none",
+                      padding: "8px 0",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontSize: "0.9rem",
+                    }}
+                  >
+                    <Settings size={16} />
+                    Settings
+                  </a>
+                  <button
+                    onClick={() => signOut("/message")}
+                    style={{
+                      color: "#dc3545",
+                      background: "transparent",
+                      border: "none",
+                      padding: "8px 0",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontSize: "0.9rem",
+                      textAlign: "left",
+                    }}
+                  >
+                    <LogOut size={16} />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          // Call to Action - Login only (Sign Up removed)
+          <div style={{ display: "flex", gap: 12 }}>
+            <a
+              href="/login"
+              style={{
+                color: "#222e3c",
+                textDecoration: "none",
+                padding: "8px 16px",
+                borderRadius: "6px",
+                border: "1px solid #ddd",
+                fontSize: "0.9rem",
+                fontWeight: 500,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                (e.target as HTMLElement).style.background = "#f5f5f5";
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLElement).style.background = "transparent";
+              }}
+            >
+              Login
+            </a>
+          </div>
+        )}
+
+        {/* Mobile Menu Toggle */}
+        <button
+          className="mobile-menu-toggle"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          style={{
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            padding: "8px",
+            borderRadius: "6px",
+            display: "none",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          aria-label="Toggle mobile menu"
+        >
+          {isMobileMenuOpen ? <X size={24} color="#222e3c" /> : <Menu size={24} color="#222e3c" />}
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            background: "#fff",
+            borderTop: "1px solid #e5e5e5",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            zIndex: 999,
+            padding: "16px 24px",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {navigationLinks.map((link) => (
+              <a
+                key={link.label}
+                href={link.href}
+                style={{
+                  display: "inline-block",
+                  color: "#fff",
+                  background: "#1565c0",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                  padding: "10px 16px",
+                  borderRadius: 8,
+                  fontSize: "1rem",
+                  boxShadow: "0 2px 6px rgba(21,101,192,0.24)",
+                }}
+                onClick={() => setIsMobileMenuOpen(false)}
+                onMouseEnter={(e) => {
+                  (e.target as HTMLElement).style.background = "#0d47a1";
+                  (e.target as HTMLElement).style.color = "#fff";
+                }}
+                onMouseLeave={(e) => {
+                  (e.target as HTMLElement).style.background = "#1565c0";
+                  (e.target as HTMLElement).style.color = "#fff";
+                }}
+              >
+                {link.label === "Chat" ? "Message" : link.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </header>
+  );
+}

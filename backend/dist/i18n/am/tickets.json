@@ -1,0 +1,25 @@
+{
+  "created": "ትኬት በተሳካ ሁኔታ ተፈጥሯል።",
+  "updated": "ትኬት በተሳካ ሁኔታ ተዘምኗል።",
+  "deleted": "ትኬት በተሳካ ሁኔታ ተሰርዟል።",
+  "not_found": "ትኬት አልተገኘም።",
+  "assigned": "ትኬት በተሳካ ሁኔታ ተመድቧል።",
+  "status": {
+    "OPEN": "ክፍት",
+    "IN_PROGRESS": "በሂደት ላይ",
+    "RESOLVED": "ተፈትቷል",
+    "CLOSED": "ተዘግቷል"
+  },
+  "priority": {
+    "LOW": "ዝቅተኛ",
+    "MEDIUM": "መካከለኛ",
+    "HIGH": "ከፍተኛ",
+    "URGENT": "አስቸኳይ"
+  },
+  "category": {
+    "INCIDENT": "ክስተት",
+    "REQUEST": "የአገልግሎት ጥያቄ",
+    "PROBLEM": "ችግኝ",
+    "OTHER": "ሌላ"
+  }
+}
