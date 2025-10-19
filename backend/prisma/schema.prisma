@@ -67,6 +67,7 @@ enum SubmissionStatus {
   ACCEPTED
   REJECTED
   ESCALATED
+  MORE_INFO_REQUESTED
   CLOSED
 }
 
@@ -77,11 +78,16 @@ enum ArticleStatus {
   PUBLISHED
   ARCHIVED
 }
-
 enum Language {
   EN
   AM
+  OR
+  TI
+  SO
+  SI
+  WO
 }
+
 
 // Abuse Reports enums
 enum ReportStatus {
