@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { DashboardLayout } from "@/app/components/dashboard-layout"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { Button } from "@/app/components/ui/button"
+import { Badge } from "@/app/components/ui/badge"
 import {
   XAxis,
   YAxis,
@@ -21,8 +21,8 @@ import {
   Area,
   AreaChart,
 } from "recharts"
-import { Download, TrendingUp, TrendingDown, Users, Ticket, BookOpen, Clock } from "lucide-react"
-import { useLocalization } from "@/hooks/use-localization"
+import { Download, TrendingUp, TrendingDown, Users, Ticket, BookOpen, Clock, MessageSquare, Truck, BarChart3 } from "lucide-react"
+import { useLocalization } from "@/app/hooks/use-localization"
 
 const ticketData = [
   { month: "Jan", created: 45, resolved: 42, pending: 8 },
@@ -146,6 +146,7 @@ export default function AnalyticsPage() {
             <TabsTrigger value="knowledge">{t("knowledgeBaseAnalytics")}</TabsTrigger>
             <TabsTrigger value="performance">{t("performanceMetrics")}</TabsTrigger>
             <TabsTrigger value="sla">{t("slaReports")}</TabsTrigger>
+            <TabsTrigger value="modules">Analytics & Reports</TabsTrigger>
           </TabsList>
 
           <TabsContent value="tickets" className="space-y-6">
@@ -206,7 +207,7 @@ export default function AnalyticsPage() {
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="tickets"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                       >
                         {departmentData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
@@ -306,9 +307,9 @@ export default function AnalyticsPage() {
                 <div className="space-y-4">
                   {[
                     { priority: t("critical"), target: "1h", actual: "45m", compliance: 95 },
-                    { priority: t("high"), target: "4h", actual: "3.2h", compliance: 88 },
-                    { priority: t("medium"), target: "24h", actual: "18h", compliance: 92 },
-                    { priority: t("low"), target: "72h", actual: "48h", compliance: 96 },
+                    { priority: t("priority.high"), target: "4h", actual: "3.2h", compliance: 88 },
+                    { priority: t("priority.medium"), target: "24h", actual: "18h", compliance: 92 },
+                    { priority: t("priority.low"), target: "72h", actual: "48h", compliance: 96 },
                   ].map((sla, index) => (
                     <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-4">
@@ -331,6 +332,89 @@ export default function AnalyticsPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* All Modules overview */}
+          <TabsContent value="modules" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Tickets */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Tickets</CardTitle>
+                  <Ticket className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">1,234</div>
+                  <p className="text-xs text-muted-foreground flex items-center">
+                    <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+                    +12% from last month
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Knowledge Base */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Knowledge Base</CardTitle>
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">12.5K</div>
+                  <p className="text-xs text-muted-foreground flex items-center">
+                    <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+                    +24% views
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Feedback */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Feedback</CardTitle>
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">342</div>
+                  <p className="text-xs text-muted-foreground">Avg rating 4.6</p>
+                </CardContent>
+              </Card>
+
+              {/* Fleet */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Fleet</CardTitle>
+                  <Truck className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">58</div>
+                  <p className="text-xs text-muted-foreground">Active vehicles</p>
+                </CardContent>
+              </Card>
+
+              {/* Users */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Users</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">892</div>
+                  <p className="text-xs text-muted-foreground">Active this month</p>
+                </CardContent>
+              </Card>
+
+              {/* Planning/Reports */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Reports</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">76</div>
+                  <p className="text-xs text-muted-foreground">Submitted this quarter</p>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

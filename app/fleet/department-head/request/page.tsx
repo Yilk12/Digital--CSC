@@ -3,8 +3,10 @@
 import React from 'react'
 import Link from 'next/link'
 import { getCurrentUserRoles, getCurrentUserPrimaryRole } from '@/app/lib/auth'
+import { useLocalization } from '@/app/hooks/use-localization'
 
 export default function DeptHeadVehicleRequestPage() {
+  const { t } = useLocalization()
   const roles = getCurrentUserRoles()
   const primary = getCurrentUserPrimaryRole()
   const devForce = process.env.NEXT_PUBLIC_DEV_FORCE_DEPT_HEAD === 'true'
@@ -17,7 +19,7 @@ export default function DeptHeadVehicleRequestPage() {
     primary === 'department_head' ||
     primary === 'manager' ||
     primary === 'admin' ||
-    primary === 'gm'
+    String(primary) === 'gm'
 
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string>('')
@@ -91,7 +93,7 @@ export default function DeptHeadVehicleRequestPage() {
         form.startDate,
       ]
       if (required.some(v => !String(v || '').trim())) {
-        throw new Error('Please fill all required fields marked with *')
+        throw new Error(t('fleet.dept.request.error.required'))
       }
 
       const payload = {
@@ -146,7 +148,7 @@ export default function DeptHeadVehicleRequestPage() {
           notes: form.approvalNotes,
         },
         driver: {
-          option: form.driverOption, // 'with_driver' | 'no_driver'
+          option: form.driverOption, 
         },
       }
 
@@ -155,11 +157,11 @@ export default function DeptHeadVehicleRequestPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      if (!res.ok) throw new Error('Failed to submit request')
+      if (!res.ok) throw new Error(t('fleet.dept.request.error.submit_failed'))
       const data = await res.json()
       setSuccessId(data?.id || data?.item?.id || '')
     } catch (err: any) {
-      setError(err?.message || 'Submission failed')
+      setError(err?.message || t('fleet.dept.request.error.generic'))
     } finally {
       setSubmitting(false)
     }
@@ -169,12 +171,10 @@ export default function DeptHeadVehicleRequestPage() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Vehicle Assignment – Department Head</h1>
-          <Link href="/fleet" className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">← Back</Link>
+          <h1 className="text-2xl font-bold">{t('fleet.dept.request.title_denied')}</h1>
+          <Link href="/fleet" className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">{t('fleet.dept.request.back_fleet')}</Link>
         </div>
-        <div className="p-4 border rounded bg-red-50 text-red-700">
-          Access denied. This form is only available to Department Heads.
-        </div>
+        <div className="p-4 border rounded bg-red-50 text-red-700">{t('fleet.dept.request.denied')}</div>
       </div>
     )
   }
@@ -183,43 +183,43 @@ export default function DeptHeadVehicleRequestPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Vehicle Assignment Form – Department Head (Utilities)</h1>
-          <p className="text-sm text-gray-600">Request form only visible for Department Head</p>
+          <h1 className="text-2xl font-bold">{t('fleet.dept.request.title')}</h1>
+          <p className="text-sm text-gray-600">{t('fleet.dept.request.notice')}</p>
         </div>
-        <Link href="/fleet/department-head" className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">← Back</Link>
+        <Link href="/fleet/department-head" className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">{t('fleet.dept.request.back_dept')}</Link>
       </div>
 
       {error && <div className="mb-4 p-3 border border-red-200 bg-red-50 text-red-700 rounded">{error}</div>}
       {successId && (
         <div className="mb-4 p-3 border border-green-200 bg-green-50 text-green-700 rounded">
-          Request submitted successfully. Reference ID: <span className="font-mono">{successId}</span>
+          {t('fleet.dept.request.success')} <span className="font-mono">{successId}</span>
         </div>
       )}
 
       <form onSubmit={onSubmit} className="space-y-8">
         {/* Department Information */}
         <section className="bg-white rounded-lg shadow border">
-          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">🏢 Department Information</h2></div>
+          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">🏢 {t('fleet.dept.request.section.department')}</h2></div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Department Name *</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.department.name')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.departmentName} onChange={e=>update('departmentName', e.target.value)} required />
-              <p className="text-xs text-gray-500">(e.g. for home to office, field, special)</p>
+              <p className="text-xs text-gray-500">{t('fleet.dept.request.department.note')}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Department Head Name *</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.department.head_name')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.departmentHeadName} onChange={e=>update('departmentHeadName', e.target.value)} required />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Employee ID / Badge Number *</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.department.employee_id')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.employeeId} onChange={e=>update('employeeId', e.target.value)} required />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Contact Number *</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.department.contact')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.contactNumber} onChange={e=>update('contactNumber', e.target.value)} required />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Email Address *</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.department.email')}</label>
               <input type="email" className="w-full border rounded px-3 py-2" value={form.email} onChange={e=>update('email', e.target.value)} required />
             </div>
           </div>
@@ -227,30 +227,30 @@ export default function DeptHeadVehicleRequestPage() {
 
         {/* Vehicle Details */}
         <section className="bg-white rounded-lg shadow border">
-          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">🚘 Vehicle Details</h2></div>
+          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">🚘 {t('fleet.dept.request.section.vehicle')}</h2></div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Vehicle ID / Fleet Number</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.vehicle.id')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.vehicleId} onChange={e=>update('vehicleId', e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">License Plate Number</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.vehicle.plate')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.licensePlate} onChange={e=>update('licensePlate', e.target.value)} />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Make & Model</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.vehicle.make_model')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.makeModel} onChange={e=>update('makeModel', e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Year</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.vehicle.year')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.year} onChange={e=>update('year', e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Fuel Type</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.vehicle.fuel_type')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.fuelType} onChange={e=>update('fuelType', e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Current Odometer Reading (km)</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.vehicle.odometer')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.odometerStartKm} onChange={e=>update('odometerStartKm', e.target.value)} />
             </div>
           </div>
@@ -258,27 +258,27 @@ export default function DeptHeadVehicleRequestPage() {
 
         {/* Assignment Period */}
         <section className="bg-white rounded-lg shadow border">
-          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">📅 Assignment Period</h2></div>
+          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">📅 {t('fleet.dept.request.section.assignment')}</h2></div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Assignment Start Date *</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.assignment.start')}</label>
               <input type="date" className="w-full border rounded px-3 py-2" value={form.startDate} onChange={e=>update('startDate', e.target.value)} required />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Assignment End Date (if temporary)</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.assignment.end')}</label>
               <input type="date" className="w-full border rounded px-3 py-2" value={form.endDate} onChange={e=>update('endDate', e.target.value)} />
-              <p className="text-xs text-gray-500">Leave blank if permanent or ongoing</p>
+              <p className="text-xs text-gray-500">{t('fleet.dept.request.assignment.end_note')}</p>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-2">Expected Usage Frequency</label>
+              <label className="block text-sm font-medium mb-2">{t('fleet.dept.request.assignment.freq')}</label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 {[
-                  ['usageDaily','Daily'],
-                  ['usageWeekly','Weekly'],
-                  ['usageOccasional','Occasional'],
-                  ['usageEmergency','Emergency Use Only'],
-                  ['usageFullTime','Full time'],
-                  ['usageOther','Other'],
+                  ['usageDaily', t('fleet.dept.request.assignment.freq_daily')],
+                  ['usageWeekly', t('fleet.dept.request.assignment.freq_weekly')],
+                  ['usageOccasional', t('fleet.dept.request.assignment.freq_occasional')],
+                  ['usageEmergency', t('fleet.dept.request.assignment.freq_emergency')],
+                  ['usageFullTime', t('fleet.dept.request.assignment.freq_fulltime')],
+                  ['usageOther', t('fleet.dept.request.assignment.freq_other')],
                 ].map(([key,label]) => (
                   <label key={key} className="inline-flex items-center space-x-2">
                     <input type="checkbox" checked={(form as any)[key]} onChange={e=>update(key as any, e.target.checked)} />
@@ -287,7 +287,7 @@ export default function DeptHeadVehicleRequestPage() {
                 ))}
               </div>
               {form.usageOther && (
-                <input className="mt-2 w-full border rounded px-3 py-2" placeholder="Specify other usage" value={form.usageOtherText} onChange={e=>update('usageOtherText', e.target.value)} />
+                <input className="mt-2 w-full border rounded px-3 py-2" placeholder={t('fleet.dept.request.assignment.freq_other_ph')} value={form.usageOtherText} onChange={e=>update('usageOtherText', e.target.value)} />
               )}
             </div>
           </div>
@@ -295,14 +295,14 @@ export default function DeptHeadVehicleRequestPage() {
 
         {/* Purpose of Assignment */}
         <section className="bg-white rounded-lg shadow border">
-          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">🎯 Purpose of Assignment</h2></div>
+          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">🎯 {t('fleet.dept.request.section.purpose')}</h2></div>
           <div className="p-6 space-y-2">
             {[
-              ['purposeFieldSupervision','Field Supervision'],
-              ['purposeSiteInspections','Site Inspections'],
-              ['purposeEmergencyResponse','Emergency Response'],
-              ['purposeEquipmentTransport','Equipment/Staff Transport'],
-              ['purposeOther','Other'],
+              ['purposeFieldSupervision', t('fleet.dept.request.purpose.field')],
+              ['purposeSiteInspections', t('fleet.dept.request.purpose.site')],
+              ['purposeEmergencyResponse', t('fleet.dept.request.purpose.emergency')],
+              ['purposeEquipmentTransport', t('fleet.dept.request.purpose.transport')],
+              ['purposeOther', t('fleet.dept.request.purpose.other')],
             ].map(([key,label]) => (
               <label key={key} className="block">
                 <input type="checkbox" className="mr-2" checked={(form as any)[key]} onChange={e=>update(key as any, e.target.checked)} />
@@ -310,44 +310,44 @@ export default function DeptHeadVehicleRequestPage() {
               </label>
             ))}
             {form.purposeOther && (
-              <input className="mt-2 w-full border rounded px-3 py-2" placeholder="Specify other purpose" value={form.purposeOtherText} onChange={e=>update('purposeOtherText', e.target.value)} />
+              <input className="mt-2 w-full border rounded px-3 py-2" placeholder={t('fleet.dept.request.purpose.other_ph')} value={form.purposeOtherText} onChange={e=>update('purposeOtherText', e.target.value)} />
             )}
           </div>
         </section>
 
         {/* Driver Option */}
         <section className="bg-white rounded-lg shadow border">
-          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">Driver Option</h2></div>
+          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">{t('fleet.dept.request.section.driver')}</h2></div>
           <div className="p-6">
             <label className="mr-6 inline-flex items-center space-x-2">
               <input type="radio" name="driverOption" checked={form.driverOption==='with_driver'} onChange={()=>update('driverOption','with_driver')} />
-              <span>Driver assigned for drive</span>
+              <span>{t('fleet.dept.request.driver.with')}</span>
             </label>
             <label className="inline-flex items-center space-x-2">
               <input type="radio" name="driverOption" checked={form.driverOption==='no_driver'} onChange={()=>update('driverOption','no_driver')} />
-              <span>No driver assigned for drive</span>
+              <span>{t('fleet.dept.request.driver.without')}</span>
             </label>
           </div>
         </section>
 
         {/* Vehicle Return (For Fleet Use) */}
         <section className="bg-white rounded-lg shadow border">
-          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">🔄 Vehicle Return Section (For Fleet Department Use)</h2></div>
+          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">🔄 {t('fleet.dept.request.section.return')}</h2></div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 opacity-70">
             <div>
-              <label className="block text-sm font-medium mb-1">Return Date</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.return.date')}</label>
               <input type="date" className="w-full border rounded px-3 py-2" value={form.returnDate} onChange={e=>update('returnDate', e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Final Odometer Reading (km)</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.return.odometer')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.finalOdometerKm} onChange={e=>update('finalOdometerKm', e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Fuel Level at Return</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.return.fuel')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.fuelLevelAtReturn} onChange={e=>update('fuelLevelAtReturn', e.target.value)} />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Vehicle Condition / Issues Reported</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.return.condition')}</label>
               <textarea rows={3} className="w-full border rounded px-3 py-2" value={form.returnConditionNotes} onChange={e=>update('returnConditionNotes', e.target.value)} />
             </div>
           </div>
@@ -355,46 +355,46 @@ export default function DeptHeadVehicleRequestPage() {
 
         {/* Authorization */}
         <section className="bg-white rounded-lg shadow border">
-          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">✅ Authorization & Approval</h2></div>
+          <div className="px-6 py-4 border-b"><h2 className="text-lg font-medium">✅ {t('fleet.dept.request.section.auth')}</h2></div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2"><h3 className="font-medium mb-2">Requested by (Department Head)</h3></div>
+            <div className="md:col-span-2"><h3 className="font-medium mb-2">{t('fleet.dept.request.auth.requested_by')}</h3></div>
             <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.auth.name')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.requestedByName} onChange={e=>update('requestedByName', e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Signature</label>
-              <input className="w-full border rounded px-3 py-2" placeholder="Type name as signature or attach later" value={form.requestedBySignature} onChange={e=>update('requestedBySignature', e.target.value)} />
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.auth.signature')}</label>
+              <input className="w-full border rounded px-3 py-2" placeholder={t('fleet.dept.request.auth.signature_ph')} value={form.requestedBySignature} onChange={e=>update('requestedBySignature', e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Date</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.auth.date')}</label>
               <input type="date" className="w-full border rounded px-3 py-2" value={form.requestedByDate} onChange={e=>update('requestedByDate', e.target.value)} />
             </div>
 
-            <div className="md:col-span-2 mt-4"><h3 className="font-medium mb-2">Approved by (Fleet Manager / Admin)</h3></div>
+            <div className="md:col-span-2 mt-4"><h3 className="font-medium mb-2">{t('fleet.dept.request.auth.approved_by')}</h3></div>
             <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.auth.name')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.approvedByName} onChange={e=>update('approvedByName', e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Signature</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.auth.signature')}</label>
               <input className="w-full border rounded px-3 py-2" value={form.approvedBySignature} onChange={e=>update('approvedBySignature', e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Date</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.auth.date')}</label>
               <input type="date" className="w-full border rounded px-3 py-2" value={form.approvedByDate} onChange={e=>update('approvedByDate', e.target.value)} />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Notes / Special Instructions</label>
+              <label className="block text-sm font-medium mb-1">{t('fleet.dept.request.auth.notes')}</label>
               <textarea rows={3} className="w-full border rounded px-3 py-2" value={form.approvalNotes} onChange={e=>update('approvalNotes', e.target.value)} />
             </div>
           </div>
         </section>
 
         <div className="flex justify-end space-x-3">
-          <Link href="/fleet/department-head" className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</Link>
+          <Link href="/fleet/department-head" className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">{t('fleet.dept.request.cancel')}</Link>
           <button type="submit" disabled={submitting} className={`px-4 py-2 rounded-lg text-white ${submitting ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'}`}>
-            {submitting ? 'Submitting…' : 'Submit Request'}
+            {submitting ? t('fleet.dept.request.submitting') : t('fleet.dept.request.submit')}
           </button>
         </div>
       </form>

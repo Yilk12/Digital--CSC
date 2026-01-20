@@ -1,7 +1,7 @@
 "use client"
 
-import { DashboardLayout } from "@/components/dashboard-layout"
-import { UserManagement } from "@/components/user-management"
+import { DashboardLayout } from "@/app/components/dashboard-layout"
+import { UserManagement } from "@/app/components/user-management"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getCurrentUserRoles } from "@/app/lib/auth"
@@ -24,10 +24,11 @@ export default function UsersPage() {
   return (
     <DashboardLayout showHeading={false}>
       <div className="w-full flex justify-center">
-        <div className="w-full max-w-3xl">
+        <div className="w-full max-w-6xl">
           <UserManagement />
         </div>
       </div>
     </DashboardLayout>
   )
 }
+

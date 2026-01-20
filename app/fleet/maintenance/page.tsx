@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import AttachmentUploader from '@/components/attachment-uploader'
+import { usePathname } from 'next/navigation'
+import AttachmentUploader from '@/app/components/attachment-uploader'
 
 interface Vehicle {
   id: string
@@ -16,6 +17,20 @@ interface Vehicle {
   mileage: number
   assignedTo?: string
   department?: string
+}
+
+function getStatusBadgeClass(status: MaintenanceStatus | string) {
+  switch (status) {
+    case 'PENDING':
+      return 'bg-yellow-100 text-yellow-800'
+    case 'IN_PROGRESS':
+      return 'bg-blue-100 text-blue-800'
+    case 'REJECTED':
+      return 'bg-red-100 text-red-800'
+    case 'MAINTAINED':
+    default:
+      return 'bg-green-100 text-green-800'
+  }
 }
 
 // Local UI types for the request form and receipts
@@ -69,6 +84,7 @@ interface MaintenanceRequest {
     creditInvoiceUrl?: string
     receiptUrl?: string
   }
+
 }
 
 type WorkflowEntry = {
@@ -93,11 +109,32 @@ type ScheduleItem = {
   notes?: string
 }
 
+// Backend maintenance schedule types
+type MaintenanceStatus = 'PENDING' | 'IN_PROGRESS' | 'MAINTAINED' | 'REJECTED'
+interface MaintenanceSchedule {
+  id: string
+  vehicleId: string
+  userId: string
+  incidentDate: string
+  location?: string | null
+  status: MaintenanceStatus
+  description?: string | null
+  actionByUserId?: string | null
+  maintenanceScheduleTime?: string | null
+  createdAt?: string
+  updatedAt?: string
+  vehicle?: { id: string; plate: string; make: string; model: string; year?: number } | null
+  user?: { id: string; firstName: string; lastName: string; email?: string } | null
+  actionBy?: { id: string; firstName: string; lastName: string; email?: string } | null
+}
+
 export default function MaintenancePage() {
+  const pathname = usePathname()
+  const isManagerView = pathname?.startsWith('/fleet/manager') ?? false
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState('schedule')
   const [showNewRequestModal, setShowNewRequestModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -167,6 +204,11 @@ export default function MaintenancePage() {
     { id: 'sch-2', title: 'Brake Inspection - Honda Civic (XYZ-789)', due: '2024-02-20' },
     { id: 'sch-3', title: 'Tire Rotation - Ford Focus (DEF-456)', due: '2024-02-25' },
   ])
+  // Real schedules from backend
+  const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([])
+  const [scheduleStatusFilter, setScheduleStatusFilter] = useState<MaintenanceStatus | ''>('')
+  const [maintainedFilter, setMaintainedFilter] = useState<'all' | 'maintained' | 'not_maintained'>('all')
+  const [scheduleExportFormat, setScheduleExportFormat] = useState<'excel' | 'word' | 'pdf'>('excel')
   const [scheduleForm, setScheduleForm] = useState<{ title: string; vehicleId: string; due: string; notes?: string }>({
     title: '',
     vehicleId: '',
@@ -175,6 +217,338 @@ export default function MaintenancePage() {
   })
   const [scheduleSubmitting, setScheduleSubmitting] = useState(false)
   const [scheduleError, setScheduleError] = useState<string | null>(null)
+  // Selection and assignment state for schedules
+  const [selectedScheduleIds, setSelectedScheduleIds] = useState<string[]>([])
+  const [assignDate, setAssignDate] = useState<string>('')
+  const [assignSubmitting, setAssignSubmitting] = useState<boolean>(false)
+  const [targetStatus, setTargetStatus] = useState<MaintenanceStatus | ''>('')
+  const [statusSubmitting, setStatusSubmitting] = useState<boolean>(false)
+
+  // Export helpers for Maintenance Schedule
+  const exportSchedulesExcel = () => {
+    if (typeof window === 'undefined') return
+    const visible = schedules.filter(schedule => {
+      if (maintainedFilter === 'all') return true
+      if (maintainedFilter === 'maintained') return schedule.status === 'MAINTAINED'
+      if (maintainedFilter === 'not_maintained') return schedule.status !== 'MAINTAINED'
+      return true
+    })
+    if (!visible.length) return
+
+    const header = [
+      'Incident Date',
+      'Maintenance Date',
+      'Vehicle',
+      'Driver',
+      'Location',
+      'Status',
+      'Team Verified',
+      'Description',
+    ]
+
+    const csvLines = [
+      header.join(','),
+      ...visible.map(s => {
+        const incidentDate = s.incidentDate ? new Date(s.incidentDate).toLocaleString() : ''
+        const maintenanceDate = s.maintenanceScheduleTime ? new Date(s.maintenanceScheduleTime).toLocaleDateString() : ''
+        const vehicle = s.vehicle ? `${s.vehicle.plate} ${s.vehicle.make || ''} ${s.vehicle.model || ''}`.trim() : ''
+        const driver = s.user ? `${s.user.firstName} ${s.user.lastName}`.trim() : ''
+        const location = s.location || ''
+        const statusText = s.status.replace('_', ' ')
+        const teamVerified =
+          s.status === 'PENDING'
+            ? 'Pending'
+            : s.status === 'IN_PROGRESS'
+            ? 'In Progress'
+            : s.status === 'MAINTAINED'
+            ? 'Approved'
+            : s.status === 'REJECTED'
+            ? 'Rejected'
+            : ''
+        const description = s.description || ''
+
+        const cols = [incidentDate, maintenanceDate, vehicle, driver, location, statusText, teamVerified, description]
+        return cols
+          .map(v => `"${String(v).replace(/"/g, '""')}"`)
+          .join(',')
+      }),
+    ]
+
+    const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `maintenance-schedule-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const exportSchedulesWord = () => {
+    if (typeof window === 'undefined') return
+    const visible = schedules.filter(schedule => {
+      if (maintainedFilter === 'all') return true
+      if (maintainedFilter === 'maintained') return schedule.status === 'MAINTAINED'
+      if (maintainedFilter === 'not_maintained') return schedule.status !== 'MAINTAINED'
+      return true
+    })
+    if (!visible.length) return
+
+    const headerHtml = `
+      <tr>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Incident Date</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Maintenance Date</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Vehicle</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Driver</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Location</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Status</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Team Verified</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Description</th>
+      </tr>`
+
+    const rowsHtml = visible
+      .map(s => {
+        const incidentDate = s.incidentDate ? new Date(s.incidentDate).toLocaleString() : ''
+        const maintenanceDate = s.maintenanceScheduleTime ? new Date(s.maintenanceScheduleTime).toLocaleDateString() : ''
+        const vehicle = s.vehicle ? `${s.vehicle.plate} ${s.vehicle.make || ''} ${s.vehicle.model || ''}`.trim() : ''
+        const driver = s.user ? `${s.user.firstName} ${s.user.lastName}`.trim() : ''
+        const location = s.location || ''
+        const statusText = s.status.replace('_', ' ')
+        const teamVerified =
+          s.status === 'PENDING'
+            ? 'Pending'
+            : s.status === 'IN_PROGRESS'
+            ? 'In Progress'
+            : s.status === 'MAINTAINED'
+            ? 'Approved'
+            : s.status === 'REJECTED'
+            ? 'Rejected'
+            : ''
+        const description = s.description || ''
+
+        return `
+          <tr>
+            <td style="border:1px solid #ccc;padding:4px;">${incidentDate}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${maintenanceDate}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${vehicle}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${driver}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${location}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${statusText}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${teamVerified}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${description}</td>
+          </tr>`
+      })
+      .join('')
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8" /></head><body>
+      <h2>Maintenance Schedule Report</h2>
+      <table style="border-collapse:collapse;width:100%;font-family:Arial, sans-serif;font-size:12px;">
+        ${headerHtml}${rowsHtml}
+      </table>
+    </body></html>`
+
+    const blob = new Blob([html], { type: 'application/msword' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `maintenance-schedule-${new Date().toISOString().slice(0, 10)}.doc`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const exportSchedulesPdf = () => {
+    if (typeof window === 'undefined') return
+    const visible = schedules.filter(schedule => {
+      if (maintainedFilter === 'all') return true
+      if (maintainedFilter === 'maintained') return schedule.status === 'MAINTAINED'
+      if (maintainedFilter === 'not_maintained') return schedule.status !== 'MAINTAINED'
+      return true
+    })
+    if (!visible.length) return
+
+    const headerHtml = `
+      <tr>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Incident Date</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Maintenance Date</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Vehicle</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Driver</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Location</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Status</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Team Verified</th>
+        <th style="border:1px solid #ccc;padding:4px;text-align:left;">Description</th>
+      </tr>`
+
+    const rowsHtml = visible
+      .map(s => {
+        const incidentDate = s.incidentDate ? new Date(s.incidentDate).toLocaleString() : ''
+        const maintenanceDate = s.maintenanceScheduleTime ? new Date(s.maintenanceScheduleTime).toLocaleDateString() : ''
+        const vehicle = s.vehicle ? `${s.vehicle.plate} ${s.vehicle.make || ''} ${s.vehicle.model || ''}`.trim() : ''
+        const driver = s.user ? `${s.user.firstName} ${s.user.lastName}`.trim() : ''
+        const location = s.location || ''
+        const statusText = s.status.replace('_', ' ')
+        const teamVerified =
+          s.status === 'PENDING'
+            ? 'Pending'
+            : s.status === 'IN_PROGRESS'
+            ? 'In Progress'
+            : s.status === 'MAINTAINED'
+            ? 'Approved'
+            : s.status === 'REJECTED'
+            ? 'Rejected'
+            : ''
+        const description = s.description || ''
+
+        return `
+          <tr>
+            <td style="border:1px solid #ccc;padding:4px;">${incidentDate}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${maintenanceDate}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${vehicle}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${driver}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${location}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${statusText}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${teamVerified}</td>
+            <td style="border:1px solid #ccc;padding:4px;">${description}</td>
+          </tr>`
+      })
+      .join('')
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8" /><title>Maintenance Schedule Report</title></head><body>
+      <h2>Maintenance Schedule Report</h2>
+      <table style="border-collapse:collapse;width:100%;font-family:Arial, sans-serif;font-size:12px;">
+        ${headerHtml}${rowsHtml}
+      </table>
+    </body></html>`
+
+    const win = window.open('', '_blank', 'width=1024,height=768')
+    if (!win) return
+    win.document.open()
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+  }
+
+  const handleScheduleExport = () => {
+    if (scheduleExportFormat === 'excel') return exportSchedulesExcel()
+    if (scheduleExportFormat === 'word') return exportSchedulesWord()
+    if (scheduleExportFormat === 'pdf') return exportSchedulesPdf()
+  }
+
+  // Helper to load schedules from backend
+  const loadSchedules = async () => {
+    setLoading(true)
+    try {
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('accessToken') ||
+            localStorage.getItem('jwt') ||
+            localStorage.getItem('token')
+          : null
+      const q = scheduleStatusFilter ? `?status=${encodeURIComponent(scheduleStatusFilter)}` : ''
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/fleet/manager/maintenance/schedules${q}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        },
+      )
+      const data = await res.json().catch(() => ([]))
+      if (!res.ok) throw new Error(data?.error || 'Failed to load maintenance schedules')
+      setSchedules(Array.isArray(data) ? data : [])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Bulk change status for selected schedules
+  const handleChangeScheduleStatus = async (overrideStatus?: MaintenanceStatus) => {
+    const statusToUse = overrideStatus || targetStatus
+    if (!statusToUse || selectedScheduleIds.length === 0) return
+    setStatusSubmitting(true)
+    try {
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('accessToken') ||
+            localStorage.getItem('jwt') ||
+            localStorage.getItem('token')
+          : null
+
+      const requests = selectedScheduleIds.map(id =>
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/fleet/manager/maintenance/schedules/${id}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ status: statusToUse })
+        })
+      )
+      const responses = await Promise.all(requests)
+      const failures = responses.filter(r => !r.ok)
+      if (failures.length > 0) {
+        const first = failures[0]
+        const err = await first.json().catch(() => ({} as any))
+        throw new Error(err?.error || 'Some status updates failed')
+      }
+
+      await loadSchedules()
+      setSelectedScheduleIds([])
+      setToastMsg('Status updated')
+      setTimeout(() => setToastMsg(null), 2000)
+    } catch (e: any) {
+      alert(e?.message || 'Failed to update status')
+    } finally {
+      setStatusSubmitting(false)
+    }
+  }
+
+  // Load maintenance schedules from backend when 'schedule' tab is active or filter changes
+  useEffect(() => {
+    if (activeTab !== 'schedule') return
+    loadSchedules()
+  }, [activeTab, scheduleStatusFilter])
+
+  // Bulk-assign maintenance day to selected schedules
+  const handleAssignMaintenanceDay = async () => {
+    if (!assignDate || selectedScheduleIds.length === 0) return
+    setAssignSubmitting(true)
+    try {
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('accessToken') ||
+            localStorage.getItem('jwt') ||
+            localStorage.getItem('token')
+          : null
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/fleet/manager/maintenance/schedules/assign-day`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+       
+        body: JSON.stringify({ ids: selectedScheduleIds, day: assignDate })
+      }).catch(() => null as any)
+      const data = await (res ? res.json().catch(()=> ({})) : ({}))
+       console.log(data)
+      if (res && !res.ok) throw new Error(data?.error || 'Failed to assign maintenance day')
+      // Refresh schedules and clear selection
+      await loadSchedules()
+      setSelectedScheduleIds([])
+      setToastMsg('Maintenance day assigned')
+      setTimeout(() => setToastMsg(null), 2000)
+    } catch (e: any) {
+      alert(e?.message || 'Failed to assign maintenance day')
+    } finally {
+      setAssignSubmitting(false)
+    }
+  }
 
   const handleSubmitSchedule = async () => {
     try {
@@ -207,7 +581,7 @@ export default function MaintenancePage() {
       const vehicleLabel = veh ? `${veh.make} ${veh.model} (${veh.licensePlate})` : undefined
       const title = vehicleLabel ? `${scheduleForm.title} - ${vehicleLabel}` : scheduleForm.title
       // Attempt server persistence
-      const res = await fetch('/api/fleet/maintenance/schedule', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_}/api/fleet/maintenance/schedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, vehicleId: scheduleForm.vehicleId || undefined, due: scheduleForm.due, notes: scheduleForm.notes || undefined })
@@ -256,44 +630,7 @@ export default function MaintenancePage() {
       const vehiclesData = await vehiclesRes.json()
       setVehicles(vehiclesData.items || [])
 
-      // Load maintenance requests (mock data)
-      setMaintenanceRequests([
-        {
-          id: '1',
-          vehicleId: '1',
-          requestedBy: 'John Smith',
-          requestDate: '2024-01-20',
-          issueDescription: 'Engine oil change required',
-          priority: 'medium',
-          status: 'pending',
-          estimatedCost: 150
-        },
-        {
-          id: '2',
-          vehicleId: '2',
-          requestedBy: 'Sarah Johnson',
-          requestDate: '2024-01-22',
-          issueDescription: 'Brake pads need replacement',
-          priority: 'high',
-          status: 'in_progress',
-          assignedTo: 'Mike Wilson',
-          estimatedCost: 300,
-          actualCost: 320
-        },
-        {
-          id: '3',
-          vehicleId: '3',
-          requestedBy: 'David Lee',
-          requestDate: '2024-01-15',
-          issueDescription: 'Air conditioning not working',
-          priority: 'low',
-          status: 'completed',
-          assignedTo: 'Mike Wilson',
-          estimatedCost: 200,
-          actualCost: 180,
-          completionDate: '2024-01-18'
-        }
-      ])
+
     } catch (error) {
       console.error('Error loading maintenance data:', error)
     } finally {
@@ -522,29 +859,6 @@ export default function MaintenancePage() {
         throw new Error(data?.error || 'Failed to create maintenance request')
       }
 
-      // Optimistically add to list so it shows up immediately
-      setMaintenanceRequests(prev => [
-        {
-          id: data.data?.id || String(Date.now()),
-          vehicleId: newRequest.vehicleId || '',
-          requestedBy: newRequest.managerId,
-          requestDate: new Date().toISOString().slice(0,10),
-          issueDescription: newRequest.notes || 'N/A',
-          priority: newRequest.incidentSeverity === 'HIGH' ? 'urgent' : 'low',
-          status: 'pending',
-          estimatedCost: 0,
-          managerId: newRequest.managerId,
-          driverId: newRequest.driverId,
-          incidentSeverity: newRequest.incidentSeverity,
-          receiptPeriod: newRequest.receiptPeriod,
-          notes: newRequest.notes,
-          receipts: newRequest.receipts,
-          approvalStage: 'driver_submitted',
-          financeStatus: 'pending',
-          documents: {}
-        },
-        ...prev,
-      ])
 
       setShowNewRequestModal(false)
       resetNewRequestForm()
@@ -586,42 +900,37 @@ export default function MaintenancePage() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Maintenance Team Dashboard</h1>
-            <p className="text-gray-600 mt-2">Vehicle maintenance and repair management</p>
+            <h1 className="text-3xl font-bold text-gray-900"></h1>
+            <p className="text-gray-600 mt-2"></p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-gray-600">Export Schedule:</span>
+              <select
+                className="border border-gray-300 rounded h-9 px-2 bg-white text-gray-800"
+                value={scheduleExportFormat}
+                onChange={e => setScheduleExportFormat(e.target.value as 'excel' | 'word' | 'pdf')}
+              >
+                <option value="excel">Excel</option>
+                <option value="word">Word</option>
+                <option value="pdf">PDF</option>
+              </select>
+              <button
+                type="button"
+                onClick={handleScheduleExport}
+                className="px-3 py-1.5 rounded-lg border border-emerald-500 text-emerald-700 text-xs font-medium hover:bg-emerald-50"
+              >
+                Export
+              </button>
+            </div>
             <Link 
               href="/fleet" 
               className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
             >
-              ← Back to Fleet Hub
+              ← ወደ ኋላ ተመለስ
             </Link>
           </div>
         </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="mb-6">
-        <nav className="flex space-x-8">
-          {[
-            { id: 'dashboard', label: 'Dashboard' },
-            { id: 'requests', label: 'Maintenance Requests' },
-            { id: 'vehicles', label: 'Vehicles in Maintenance' },
-            { id: 'schedule', label: 'Maintenance Schedule' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
       </div>
 
       {/* Tab Content */}
@@ -1340,43 +1649,311 @@ export default function MaintenancePage() {
       )}
 
       {activeTab === 'schedule' && (
-        <div className="bg-white rounded-lg shadow border">
-          <div className="px-6 py-4 border-b">
-            <h3 className="text-lg font-medium text-gray-900">Maintenance Schedule</h3>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-                <h4 className="font-medium text-gray-900 mb-2">Scheduled Maintenance</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Oil Change - Toyota Camry (ABC-123)</span>
-                    <span className="text-gray-900">Due: 2024-02-15</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Brake Inspection - Honda Civic (XYZ-789)</span>
-                    <span className="text-gray-900">Due: 2024-02-20</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tire Rotation - Ford Focus (DEF-456)</span>
-                    <span className="text-gray-900">Due: 2024-02-25</span>
-                  </div>
-                </div>
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+          {/* Header Section */}
+          <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Maintenance Schedule
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">Manage and assign maintenance tasks</p>
               </div>
-              <div className="border rounded-lg p-4">
-                <h4 className="font-medium text-gray-900 mb-2">Preventive Maintenance</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Annual Inspection</span>
-                    <span className="text-gray-900">Next: 2024-03-01</span>
+              
+              {/* Controls
+                - Manager view (/fleet/manager/maintenance): assign date + "Assign Day" only
+                - Maintenance team view (/fleet/maintenance): compact change-status controls
+              */}
+              {isManagerView ? (
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm border border-gray-200">
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <input
+                      type="date"
+                      value={assignDate}
+                      onChange={(e) => setAssignDate(e.target.value)}
+                      className="text-sm bg-transparent border-none focus:ring-0 text-gray-700"
+                    />
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Fluid Check</span>
-                    <span className="text-gray-900">Next: 2024-02-10</span>
+
+                  <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm border border-gray-200">
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                    </svg>
+                    <select
+                      value={maintainedFilter}
+                      onChange={async (e) => {
+                        const value = e.target.value as 'all' | 'maintained' | 'not_maintained'
+                        setMaintainedFilter(value)
+
+                        // If schedules are selected, also update their status
+                        if (selectedScheduleIds.length > 0) {
+                          if (value === 'maintained') {
+                            await handleChangeScheduleStatus('MAINTAINED')
+                          } else if (value === 'not_maintained') {
+                            await handleChangeScheduleStatus('PENDING')
+                          }
+                        }
+                      }}
+                      className="text-sm bg-transparent border-none focus:ring-0 text-gray-700"
+                    >
+                      <option value="all">All</option>
+                      <option value="maintained">Maintained</option>
+                      <option value="not_maintained">Not Maintained</option>
+                    </select>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAssignMaintenanceDay}
+                    disabled={!assignDate || selectedScheduleIds.length === 0 || assignSubmitting}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                      !assignDate || selectedScheduleIds.length === 0 || assignSubmitting
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
+                    }`}
+                  >
+                    {assignSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Assigning...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Assign Day
+                      </>
+                    )}
+                  </button>
                 </div>
-              </div>
+              ) : (
+                // Maintenance team view: only change-status controls
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm border border-gray-200">
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <select
+                      value={targetStatus}
+                      onChange={(e) => setTargetStatus(e.target.value as MaintenanceStatus | '')}
+                      className="text-sm bg-transparent border-none focus:ring-0 text-gray-700"
+                    >
+                      <option value="">Change to…</option>
+                      <option value="PENDING">Pending</option>
+                      <option value="IN_PROGRESS">In Progress</option>
+                      <option value="MAINTAINED">Approved</option>
+                      <option value="REJECTED">Rejected</option>
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleChangeScheduleStatus()}
+                    disabled={!targetStatus || selectedScheduleIds.length === 0 || statusSubmitting}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                      !targetStatus || selectedScheduleIds.length === 0 || statusSubmitting
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
+                    }`}
+                  >
+                    {statusSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Change Status
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Content Section */}
+          <div className="p-6">
+            {/* Selection Info */}
+            {selectedScheduleIds.length > 0 && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-2 text-blue-700">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm font-medium">
+                    {selectedScheduleIds.length} schedule{selectedScheduleIds.length !== 1 ? 's' : ''} selected
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedScheduleIds([])}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+
+            {/* Table */}
+            <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all"
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        checked={schedules.length > 0 && schedules.every(s => selectedScheduleIds.includes(s.id))}
+                        onChange={(e) => {
+                          const checked = e.target.checked
+                          if (checked) setSelectedScheduleIds(Array.from(new Set([...schedules.map(s => s.id)])))
+                          else setSelectedScheduleIds([])
+                        }}
+                      />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Incident Date
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Maintenance Date
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Vehicle
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Driver
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Location
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      በቲሞች ተረጋግጧል
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Description
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {schedules.filter(schedule => {
+                    if (maintainedFilter === 'all') return true;
+                    if (maintainedFilter === 'maintained') return schedule.status === 'MAINTAINED';
+                    if (maintainedFilter === 'not_maintained') return schedule.status !== 'MAINTAINED';
+                    return true;
+                  }).map((s) => (
+                    <tr 
+                      key={s.id} 
+                      className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                      onClick={() => {
+                        setSelectedScheduleIds(prev => 
+                          prev.includes(s.id) 
+                            ? prev.filter(id => id !== s.id)
+                            : [...prev, s.id]
+                        )
+                      }}
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          checked={selectedScheduleIds.includes(s.id)}
+                          onChange={(e) => {
+                            const checked = e.target.checked
+                            setSelectedScheduleIds(prev => 
+                              checked 
+                                ? [...new Set([...prev, s.id])]
+                                : prev.filter(id => id !== s.id)
+                            )
+                          }}
+                        />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(s.incidentDate).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                        {s.maintenanceScheduleTime ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            {new Date(s.maintenanceScheduleTime).toLocaleDateString()}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Not Scheduled
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {s.vehicle ? (
+                          <div>
+                            <div className="font-medium">{s.vehicle.plate}</div>
+                            <div className="text-gray-500 text-xs">{s.vehicle.make} {s.vehicle.model}</div>
+                          </div>
+                        ) : '-'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {s.user ? `${s.user.firstName} ${s.user.lastName}` : '-'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {s.location || '-'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(
+                            s.status as any,
+                          )}`}
+                        >
+                          {s.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {s.status === 'PENDING' && 'Pending'}
+                        {s.status === 'IN_PROGRESS' && 'In Progress'}
+                        {s.status === 'MAINTAINED' && 'Approved'}
+                        {s.status === 'REJECTED' && 'Rejected'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 max-w-[200px]">
+                        <div className="truncate" title={s.description || ''}>
+                          {s.description || '-'}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {schedules.filter(schedule => {
+                    if (maintainedFilter === 'all') return true;
+                    if (maintainedFilter === 'maintained') return schedule.status === 'MAINTAINED';
+                    if (maintainedFilter === 'not_maintained') return schedule.status !== 'MAINTAINED';
+                    return true;
+                  }).length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-8 text-center">
+                        <div className="flex flex-col items-center justify-center text-gray-500">
+                          <svg className="w-12 h-12 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <p className="text-lg font-medium mb-1">No schedules found</p>
+                          <p className="text-sm">Adjust your filters or check back later</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* New Maintenance Request Modal */}

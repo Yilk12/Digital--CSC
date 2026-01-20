@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getAds, addAd } from "@/lib/ads-store"
+import { getAds, addAd } from "@/backend/lib/ads-store"
 
 export async function GET() {
   const list = await getAds()

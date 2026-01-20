@@ -32,4 +32,9 @@ export class CreateTicketDto {
   @IsOptional()
   @IsString({ message: i18nValidationMessage('validation.IS_STRING') })
   assigneeId?: string
+
+  @ApiProperty({ example: "Finance", required: false })
+  @IsOptional()
+  @IsString({ message: i18nValidationMessage('validation.IS_STRING') })
+  departmentName?: string
 }

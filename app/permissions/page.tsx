@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { PERMISSION_MODULES } from "@/app/lib/permissions"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useLocalization } from "@/hooks/use-localization"
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { Checkbox } from "@/app/components/ui/checkbox"
+import { Button } from "@/app/components/ui/button"
+import { Input } from "@/app/components/ui/input"
+import { Label } from "@/app/components/ui/label"
+import { useLocalization } from "@/app/hooks/use-localization"
 
 // A simple local storage key composer so we can persist per-user selections
 const storageKey = (userId: string) => `permissions:${userId || "__anonymous__"}`

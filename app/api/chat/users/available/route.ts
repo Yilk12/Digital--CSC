@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = "force-dynamic";
 import { API_BASE_URL } from '@/app/lib/api';
 
 export async function GET(request: NextRequest) {

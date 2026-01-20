@@ -58,7 +58,7 @@ export class KnowledgeBaseAnalyticsController {
 
   @ApiOperation({ summary: "Get search analytics" })
   @ApiQuery({ name: "period", required: false, type: String })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Get("search")
   getSearchAnalytics(
     @Query("period") period = "month"
@@ -68,7 +68,7 @@ export class KnowledgeBaseAnalyticsController {
 
   @ApiOperation({ summary: "Get user engagement metrics" })
   @ApiQuery({ name: "period", required: false, type: String })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Get("engagement")
   getUserEngagement(
     @Query("period") period = "month"
@@ -77,21 +77,13 @@ export class KnowledgeBaseAnalyticsController {
   }
 
   @ApiOperation({ summary: "Get content gap analysis" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER, UserRole.SUPPORT_AGENT)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head, UserRole.SUPPORT_AGENT)
   @Get("content-gaps")
   getContentGaps(@Request() req) {
     return this.analyticsService.getContentGapAnalysis()
   }
 
-  @ApiOperation({ summary: "Get author performance statistics" })
-  @ApiQuery({ name: "period", required: false, type: String })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
-  @Get("authors/performance")
-  getAuthorPerformance(
-    @Query("period") period = "month"
-  ) {
-    return this.analyticsService.getAuthorPerformance(period)
-  }
+  
 
   @ApiOperation({ summary: "Get language distribution analytics" })
   @Get("languages")
@@ -111,7 +103,7 @@ export class KnowledgeBaseAnalyticsController {
 
   @ApiOperation({ summary: "Get knowledge base ROI metrics" })
   @ApiQuery({ name: "period", required: false, type: String })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Get("roi")
   getROIMetrics(
     @Query("period") period = "month"
@@ -120,7 +112,7 @@ export class KnowledgeBaseAnalyticsController {
   }
 
   @ApiOperation({ summary: "Get content lifecycle analytics" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Get("content-lifecycle")
   getContentLifecycle(@Request() req) {
     return this.analyticsService.getContentLifecycleAnalytics()
@@ -138,7 +130,7 @@ export class KnowledgeBaseAnalyticsController {
   }
 
   @ApiOperation({ summary: "Get knowledge base health score" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Get("health-score")
   getHealthScore(@Request() req) {
     return this.analyticsService.getKnowledgeBaseHealthScore()
@@ -147,7 +139,7 @@ export class KnowledgeBaseAnalyticsController {
   @ApiOperation({ summary: "Get comparative analytics" })
   @ApiQuery({ name: "currentPeriod", required: false, type: String })
   @ApiQuery({ name: "previousPeriod", required: false, type: String })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Get("comparative")
   getComparativeAnalytics(
     @Query("currentPeriod") currentPeriod = "month",
@@ -170,7 +162,7 @@ export class KnowledgeBaseAnalyticsController {
   @ApiQuery({ name: "type", required: false, enum: ["overview", "articles", "search", "engagement"] })
   @ApiQuery({ name: "format", required: false, enum: ["csv", "xlsx", "json"] })
   @ApiQuery({ name: "period", required: false, type: String })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Get("export")
   exportAnalytics(
     @Request() req,
@@ -180,4 +172,5 @@ export class KnowledgeBaseAnalyticsController {
   ) {
     return this.analyticsService.exportAnalyticsData(type, format, period, req.user.userId)
   }
+
 }

@@ -39,7 +39,6 @@ export class SearchService {
       this.prisma.article.findMany({
         where,
         include: {
-          author: { select: { id: true, firstName: true, lastName: true } },
           category: { select: { id: true, name: true } }
         },
         orderBy: { viewCount: 'desc' },
@@ -59,7 +58,6 @@ export class SearchService {
         id: article.id,
         title: article.title,
         excerpt: article.excerpt || article.content.substring(0, 200) + '...',
-        author: `${article.author.firstName} ${article.author.lastName}`,
         category: article.category?.name || 'Uncategorized',
         viewCount: article.viewCount,
         likeCount: article.likeCount,
@@ -136,9 +134,7 @@ export class SearchService {
       where.content = { contains: searchQuery.content }
     }
 
-    if (searchQuery.authorId) {
-      where.authorId = searchQuery.authorId
-    }
+    
 
     if (searchQuery.categoryIds && searchQuery.categoryIds.length > 0) {
       where.categoryId = { in: searchQuery.categoryIds }
@@ -182,7 +178,6 @@ export class SearchService {
       this.prisma.article.findMany({
         where,
         include: {
-          author: { select: { id: true, firstName: true, lastName: true } },
           category: { select: { id: true, name: true } }
         },
         orderBy,
@@ -197,7 +192,6 @@ export class SearchService {
         id: article.id,
         title: article.title,
         excerpt: article.excerpt || article.content.substring(0, 200) + '...',
-        author: `${article.author.firstName} ${article.author.lastName}`,
         category: article.category?.name || 'Uncategorized',
         viewCount: article.viewCount,
         likeCount: article.likeCount,

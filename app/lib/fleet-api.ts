@@ -25,12 +25,20 @@ export interface VehicleDTO {
   make?: string;
   model?: string;
   driverId?: string | null;
+  assignedTo?: string | null;
 }
 
 export async function listFleetRequests(params?: { status?: string }): Promise<FleetRequestDTO[]> {
   const qs = new URLSearchParams();
   if (params?.status) qs.set("status", params.status);
-  return apiGet(`/fleet/requests${qs.toString() ? `?${qs.toString()}` : ""}`);
+
+  // Use the new fleet-requests endpoint that matches the backend
+  const raw = await apiGet<any>(`/fleet/fleet-requests${qs.toString() ? `?${qs.toString()}` : ""}`);
+
+  // Backend currently returns { data: [...] }; normalize to a plain array for callers
+  if (Array.isArray(raw)) return raw as FleetRequestDTO[];
+  const arr = (raw?.data || raw?.items || []) as any[];
+  return Array.isArray(arr) ? (arr as FleetRequestDTO[]) : [];
 }
 
 export async function createFleetRequest(body: {
@@ -45,15 +53,18 @@ export async function createFleetRequest(body: {
   cost?: number;
   attachments?: Array<{ name: string; url?: string }>;
 }): Promise<FleetRequestDTO> {
-  return apiPost(`/fleet/requests`, body);
+  // Use the new fleet-requests endpoint that matches the backend
+  return apiPost(`/fleet/fleet-requests`, body);
 }
 
 export async function approveFleetRequest(id: string): Promise<FleetRequestDTO> {
-  return apiPost(`/fleet/requests/${encodeURIComponent(id)}/approve`);
+  // Use the new fleet-requests endpoint that matches the backend
+  return apiPost(`/fleet/fleet-requests/${encodeURIComponent(id)}/approve`);
 }
 
 export async function rejectFleetRequest(id: string): Promise<FleetRequestDTO> {
-  return apiPost(`/fleet/requests/${encodeURIComponent(id)}/reject`);
+  // Use the new fleet-requests endpoint that matches the backend
+  return apiPost(`/fleet/fleet-requests/${encodeURIComponent(id)}/reject`);
 }
 
 export async function listVehicles(q?: string): Promise<VehicleDTO[]> {
@@ -68,11 +79,15 @@ export async function updateVehicle(id: string, body: Partial<VehicleDTO>): Prom
 
 export interface DriverDTO { id: string; name: string; phone?: string }
 
-// Placeholder: if backend has /fleet/drivers, use it. Otherwise fallback to /users with role filter.
 export async function listDrivers(): Promise<DriverDTO[]> {
   try {
-    const items = await apiGet<any[]>(`/fleet/drivers`)
-    return (items || []).map(d => ({ id: d.id || d.userId || d.code, name: d.name || d.fullName || d.username || d.email }))
+    // Use UsersController /users/drivers which returns { id, name, email, phone, role }
+    const items = await apiGet<any[]>(`/users/drivers`)
+    return (items || []).map(d => ({
+      id: d.id,
+      name: d.name || d.email,
+      phone: d.phone,
+    }))
   } catch {
     // Fallback to generic users API if available
     try {

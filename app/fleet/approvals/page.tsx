@@ -2,11 +2,11 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { Button } from "@/app/components/ui/button"
+import { Badge } from "@/app/components/ui/badge"
+import { Input } from "@/app/components/ui/input"
+import { Separator } from "@/app/components/ui/separator"
 import { listFleetRequests, approveFleetRequest, rejectFleetRequest, type FleetRequestDTO } from "@/app/lib/fleet-api"
 import { getCurrentUserPrimaryRole } from "@/app/lib/auth"
 
@@ -60,7 +60,7 @@ export default function FleetApprovalsPage() {
     }
   }
 
-  const canModerate = role === "admin" || role === "manager" || role === "department_head" || role === "gm" || role === "finance"
+  const canModerate = role === "admin" || role === "manager" || role === "department_head" || role === "commissioner" || role === "finance"
 
   return (
     <div className="container mx-auto max-w-6xl py-6 space-y-4">

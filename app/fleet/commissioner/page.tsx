@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { DashboardLayout } from "@/components/dashboard-layout"
+import { DashboardLayout } from "@/app/components/dashboard-layout"
 
 export default function CommissionerFleetPage() {
   return (

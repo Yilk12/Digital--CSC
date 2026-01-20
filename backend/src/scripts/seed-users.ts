@@ -21,7 +21,7 @@ async function upsertUser(params: {
       lastName,
       role,
       userType,
-      department: department ?? null,
+      departmentId: department ?? null,
       password: passwordHash,
       isActive: true,
     },
@@ -31,7 +31,7 @@ async function upsertUser(params: {
       lastName,
       role,
       userType,
-      department: department ?? null,
+      departmentId: department ?? null,
       password: passwordHash,
       isActive: true,
     },
@@ -59,6 +59,10 @@ async function main() {
   // Ensure core departments exist
   await ensureDepartment({ name: "Information Technology", description: "IT Department" })
   await ensureDepartment({ name: "Finance", description: "Finance Department" })
+  await ensureDepartment({ name: "Management", description: "Management Department" })
+  await ensureDepartment({ name: "Operations", description: "Operations Department" })
+  await ensureDepartment({ name: "Support", description: "Support Department" })
+  await ensureDepartment({ name: "HR", description: "Human Resources Department" })
 
   const users = [
     {
@@ -71,19 +75,19 @@ async function main() {
       password: "Password123!",
     },
     {
-      email: "general.manager@example.com",
+      email: "commissioner@example.com",
       firstName: "General",
-      lastName: "Manager",
-      role: UserRole.GENERAL_DIRECTOR,
+      lastName: "Commissioner",
+      role: UserRole.Commissioner,
       userType: UserType.INTERNAL,
       department: "Management",
       password: "Password123!",
     },
     {
-      email: "staff.manager@example.com",
-      firstName: "Staff",
-      lastName: "Manager",
-      role: UserRole.STAFF_MANAGER,
+      email: "department.head@example.com",
+      firstName: "Department",
+      lastName: "Head",
+      role: UserRole.Department_Head,
       userType: UserType.INTERNAL,
       department: "Operations",
       password: "Password123!",
@@ -117,12 +121,12 @@ async function main() {
       department: "Information Technology",
       password: "Password123!",
     },
-    // IT Department Head (STAFF_MANAGER)
+    // IT Department Head
     {
       email: "head.it@example.com",
       firstName: "IT",
       lastName: "Head",
-      role: UserRole.STAFF_MANAGER,
+      role: UserRole.Department_Head,
       userType: UserType.INTERNAL,
       department: "Information Technology",
       password: "Password123!",
@@ -137,14 +141,64 @@ async function main() {
       department: "Finance",
       password: "Password123!",
     },
-    // Finance Department Head (STAFF_MANAGER)
+    // Finance Department Head
     {
       email: "head.finance@example.com",
       firstName: "Finance",
       lastName: "Head",
-      role: UserRole.STAFF_MANAGER,
+      role: UserRole.Department_Head,
       userType: UserType.INTERNAL,
       department: "Finance",
+      password: "Password123!",
+    },
+    // Maintenance Team
+    {
+      email: "maintenance@example.com",
+      firstName: "Maintenance",
+      lastName: "Team",
+      role: UserRole.Maintenace_Team,
+      userType: UserType.INTERNAL,
+      department: "Operations",
+      password: "Password123!",
+    },
+    // Finance Department User
+    {
+      email: "finance.user@example.com",
+      firstName: "Finance",
+      lastName: "User",
+      role: UserRole.Finance_Department,
+      userType: UserType.INTERNAL,
+      department: "Finance",
+      password: "Password123!",
+    },
+    // Announcement Creator
+    {
+      email: "announcement@example.com",
+      firstName: "Announcement",
+      lastName: "Creator",
+      role: UserRole.Announcement_Creator,
+      userType: UserType.INTERNAL,
+      department: "Operations",
+      password: "Password123!",
+    },
+    // Fleet Manager
+    {
+      email: "fleet@example.com",
+      firstName: "Fleet",
+      lastName: "Manager",
+      role: UserRole.Fleet_Manager,
+      userType: UserType.INTERNAL,
+      department: "Operations",
+      password: "Password123!",
+    },
+    // Driver
+    {
+      email: "driver@example.com",
+      firstName: "Company",
+      lastName: "Driver",
+      role: UserRole.Driver,
+      userType: UserType.INTERNAL,
+      department: "Operations",
       password: "Password123!",
     },
     {
@@ -156,7 +210,7 @@ async function main() {
       department: "HR",
       password: "Password123!",
     },
-    // Optional: external end user (comment out if you only want 4 users)
+    // External end user
     {
       email: "user.external@example.com",
       firstName: "External",

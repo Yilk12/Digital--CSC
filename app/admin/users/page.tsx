@@ -1,7 +1,7 @@
 "use client"
-import React from "react"
-import { DashboardLayout } from "@/components/dashboard-layout"
-import { UserManagement } from "@/components/user-management"
+import React, { Suspense } from "react"
+import { DashboardLayout } from "@/app/components/dashboard-layout"
+import { UserManagement } from "@/app/components/user-management"
 import { getCurrentUserRoles } from "@/app/lib/auth"
 
 export default function AdminUsersPage() {
@@ -10,6 +10,7 @@ export default function AdminUsersPage() {
 
   return (
     <DashboardLayout showHeading={false}>
+      <Suspense fallback={<div className="p-4 text-sm text-gray-600">Loading admin users...</div>}>
       {!isAdmin ? (
         <div className="w-full max-w-3xl mx-auto py-16 text-center">
           <h1 className="text-2xl font-bold mb-2">403 — Forbidden</h1>
@@ -22,6 +23,7 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
+      </Suspense>
     </DashboardLayout>
   )
 }

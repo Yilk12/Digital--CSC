@@ -1,26 +1,34 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/app/components/ui/card"
+import { Button } from "@/app/components/ui/button"
 import { useEffect, useRef, useState } from "react"
 import { Settings } from "lucide-react"
-import dynamic from "next/dynamic"
+import SettingsPanel from "@/app/components/settings-panel"
+import { getCurrentUserRoles } from "@/app/lib/auth"
 
-const SettingsPanel = dynamic(() => import("@/components/settings-panel"), { ssr: false })
-
-const sections = [
-  { label: "General", href: "/admin/settings/general" },
-  { label: "Users & Roles", href: "/admin/settings/users" },
-  { label: "Notifications", href: "/admin/settings/notifications" },
-  { label: "Security", href: "/admin/settings/security" },
-  { label: "Modules", href: "/admin/settings/modules" },
-  { label: "Backup & Data", href: "/admin/settings/backup" },
-]
+const getVisibleSections = () => {
+  try {
+    const roles = getCurrentUserRoles().map((r) => String(r).toLowerCase())
+    const isAdmin = roles.includes("admin")
+    if (isAdmin) {
+      return [
+        { label: "Users & Roles", href: "/admin/settings/users" },
+        { label: "Accounts", href: "/admin/settings/accounts" },
+        { label: "Security", href: "/admin/settings/security" },
+      ]
+    }
+  } catch {}
+  return [
+    { label: "Security", href: "/admin/settings/security" },
+  ]
+}
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [sections, setSections] = useState<{ label: string; href: string }[]>([])
 
   // Localization: Ethiopian regional languages
   const languages = [
@@ -56,6 +64,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   }, [])
 
   useEffect(() => {
+    setSections(getVisibleSections())
+  }, [])
+
+  useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (!localeRef.current) return
       if (!localeRef.current.contains(e.target as Node)) {
@@ -85,57 +97,59 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="flex flex-col h-screen">
-      <header className="flex items-center justify-between bg-transparent shadow-none px-6 py-4">
-        <div className="flex items-center gap-4">
-          <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded" />
-          <h1 className="text-xl font-bold text-gray-800">Help-Desk System</h1>
-        </div>
-        <div className="flex items-center gap-4 relative">
-          {/* Localization - top-right in header */}
-          <div ref={localeRef} className="relative">
-            <button
-              onClick={() => setOpenLocale((v) => !v)}
-              className="px-3 py-2 rounded-md border text-sm font-semibold bg-white text-blue-700 border-gray-200 shadow-sm hover:bg-gray-50"
-              aria-haspopup="listbox"
-              aria-expanded={openLocale}
-              title="Localization"
-            >
-              {languages.find((l) => l.code === locale)?.label || "Language"}
-            </button>
-            {openLocale && (
-              <div
-                role="listbox"
-                className="absolute right-0 mt-2 w-64 max-h-80 overflow-y-auto bg-white rounded-md border border-gray-200 shadow-xl z-50"
-              >
-                {languages.map((lang) => (
-                  <button
-                    key={lang.code}
-                    onClick={() => selectLocale(lang.code)}
-                    role="option"
-                    aria-selected={locale === lang.code}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                      locale === lang.code ? "bg-blue-50" : ""
-                    }`}
-                  >
-                    {lang.label}
-                  </button>
-                ))}
-              </div>
-            )}
+      {pathname !== "/admin/settings/security" && (
+        <header className="flex items-center justify-between bg-transparent shadow-none px-6 py-4">
+          <div className="flex items-center gap-4">
+            <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded" />
+            <h1 className="text-xl font-bold text-gray-800">Help-Desk System</h1>
           </div>
-          <button className="p-2 rounded-full hover:bg-gray-200">🔔</button>
-          <button className="p-2 rounded-full hover:bg-gray-200">👤</button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSettingsClick}
-            className="flex items-center gap-2"
-          >
-            <Settings className="h-4 w-4" />
-            Quick Settings
-          </Button>
-        </div>
-      </header>
+          <div className="flex items-center gap-4 relative">
+            {/* Localization - top-right in header */}
+            <div ref={localeRef} className="relative">
+              <button
+                onClick={() => setOpenLocale((v) => !v)}
+                className="px-3 py-2 rounded-md border text-sm font-semibold bg-white text-blue-700 border-gray-200 shadow-sm hover:bg-gray-50"
+                aria-haspopup="listbox"
+                aria-expanded={openLocale}
+                title="Localization"
+              >
+                {languages.find((l) => l.code === locale)?.label || "Language"}
+              </button>
+              {openLocale && (
+                <div
+                  role="listbox"
+                  className="absolute right-0 mt-2 w-64 max-h-80 overflow-y-auto bg-white rounded-md border border-gray-200 shadow-xl z-50"
+                >
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => selectLocale(lang.code)}
+                      role="option"
+                      aria-selected={locale === lang.code}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                        locale === lang.code ? "bg-blue-50" : ""
+                      }`}
+                    >
+                      {lang.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button className="p-2 rounded-full hover:bg-gray-200">🔔</button>
+            <button className="p-2 rounded-full hover:bg-gray-200">👤</button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSettingsClick}
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Quick Settings
+            </Button>
+          </div>
+        </header>
+      )}
 
       <nav className="flex bg-blue-600 text-white px-6 py-3 shadow-sm">
         {sections.map((sec) => {
@@ -156,7 +170,9 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
       <main className="flex-1 p-6 overflow-y-auto">
         <Card className="mb-6 bg-transparent shadow-none">
-          <CardContent className="pt-6">{children}</CardContent>
+          <CardContent className="pt-6">
+            {children}
+          </CardContent>
         </Card>
         <div className="flex gap-4">
           <Button className="bg-blue-600 text-white hover:bg-blue-700">Save Changes</Button>

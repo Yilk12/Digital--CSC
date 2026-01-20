@@ -11,6 +11,7 @@ import { ChatModule } from "./chat/chat.module"
 import { HelpdeskModule } from "./helpdesk/helpdesk.module"
 import { ReportsModule } from "./reports/reports.module"
 import { SettingsModule } from "./settings/settings.module"
+import { PasswordPolicyModule } from "./password-policy/password-policy.module"
 import { I18nModule, AcceptLanguageResolver, QueryResolver, HeaderResolver, I18nJsonLoader } from 'nestjs-i18n'
 import * as path from 'path'
 import { PostsModule } from './posts/posts.module'
@@ -19,13 +20,11 @@ import { FeedbackModule } from "./feedback/feedback.module"
 import { AbuseReportsModule } from './abuse-reports/abuse-reports.module'
 import { DepartmentsModule } from './departments/departments.module'
 import { SubmissionsModule } from './submissions/submissions.module'
-import { ScorecardsModule } from './bcas/scorecards/scorecards.module'
-import { ObjectivesModule } from './bcas/objectives/objectives.module'
-import { KpisModule } from './bcas/kpis/kpis.module'
-import { DashboardsModule } from './bcas/dashboards/dashboards.module'
 import { FleetModule } from './fleet/fleet.module'
-import { PlanningModule } from './planning/planning.module'
 import { WorkflowModule } from './workflow/workflow.module'
+import { UploadModule } from './upload/upload.module'
+import { AnnouncementModule } from './advertisements/announcement.module'
+
 
 @Module({
   imports: [
@@ -66,13 +65,13 @@ import { WorkflowModule } from './workflow/workflow.module'
     AdvertisementsModule,
     DepartmentsModule,
     SubmissionsModule,
-    ScorecardsModule,
-    ObjectivesModule,
-    KpisModule,
-    DashboardsModule,
     FleetModule,
-    PlanningModule,
     WorkflowModule,
+    UploadModule,
+    AnnouncementModule,
+    PasswordPolicyModule,
+
+
   ],
 })
 export class AppModule {}

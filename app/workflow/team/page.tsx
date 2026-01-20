@@ -35,7 +35,7 @@ export default function TeamInboxPage() {
   const [items, setItems] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(1000);
 
   const [employees, setEmployees] = useState<User[]>([]);
   const [fanoutSel, setFanoutSel] = useState<Record<string, boolean>>({});

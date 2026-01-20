@@ -53,16 +53,12 @@ export const PERMISSION_MODULES: PermissionModule[] = [
       { key: "driver_register", label: "Register Driver" },
       { key: "assign_driver", label: "Assign Driver" },
       { key: "maintenance_request", label: "Maintenance Request" },
-    ],
-  },
-  {
-    key: "bcas",
-    label: "Balanced Scorecard (BCAS)",
-    activities: [
-      { key: "view_dashboards", label: "View Dashboards" },
-      { key: "manage_kpis", label: "Manage KPIs" },
-      { key: "upload_data", label: "Upload Data" },
-      { key: "configure", label: "Configure" },
+      { key: "maintenance_create", label: "Create Maintenance" },
+      { key: "maintenance_update", label: "Update Maintenance" },
+      { key: "maintenance_schedule", label: "Schedule Maintenance" },
+      { key: "maintenance_inspect", label: "Record Inspection" },
+      { key: "maintenance_report_export", label: "Export Maintenance/Cost Reports" },
+      { key: "communicate", label: "Communicate with Teams" },
     ],
   },
   {
@@ -71,18 +67,6 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     activities: [
       { key: "view", label: "View" },
       { key: "export", label: "Export" },
-    ],
-  },
-  // Added modules
-  {
-    key: "overtime_field",
-    label: "Overtime & Field",
-    activities: [
-      { key: "view", label: "View" },
-      { key: "create", label: "Create" },
-      { key: "update", label: "Update" },
-      { key: "approve", label: "Approve" },
-      { key: "delete", label: "Delete" },
     ],
   },
   {
@@ -103,18 +87,6 @@ export const PERMISSION_MODULES: PermissionModule[] = [
       { key: "view", label: "View" },
       { key: "create", label: "Create" },
       { key: "moderate", label: "Moderate" },
-      { key: "update", label: "Update" },
-      { key: "delete", label: "Delete" },
-    ],
-  },
-  {
-    key: "plan_report",
-    label: "Plan & Report",
-    activities: [
-      { key: "view", label: "View" },
-      { key: "create", label: "Create" },
-      { key: "submit", label: "Submit" },
-      { key: "approve", label: "Approve" },
       { key: "update", label: "Update" },
       { key: "delete", label: "Delete" },
     ],

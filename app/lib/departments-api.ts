@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from "@/app/lib/api"
+import { apiGet, apiPatch, apiPost, apiDelete } from "@/app/lib/api"
 
 export interface DepartmentSummary {
   id: string
@@ -55,5 +55,5 @@ export const departmentsApi = {
   update: (id: string, dto: UpdateDepartmentDto) => apiPatch<DepartmentSummary>(`/departments/${id}`, dto),
 
   // DELETE /api/v1/departments/:id (soft deactivate)
-  deactivate: (id: string) => apiPost<DepartmentSummary>(`/departments/${id}?_method=DELETE`),
+  deactivate: (id: string) => apiDelete<DepartmentSummary>(`/departments/${id}`),
 }

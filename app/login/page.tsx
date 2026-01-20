@@ -1,42 +1,33 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { decodeJwt, getCurrentUserPrimaryRole } from "@/app/lib/auth";
+import { saveAuthSession, getDepartmentInfo } from "@/app/lib/session";
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string>("");
+  const [showVerifyMessage, setShowVerifyMessage] = useState(false);
 
-  // Helper to build an unsigned mock JWT for dev fallback
-  const b64url = (input: string) => {
-    const s = typeof window !== 'undefined' ? btoa(unescape(encodeURIComponent(input))) : ''
-    return s.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-  }
-  const setMockSession = (payload: any) => {
-    const header = b64url(JSON.stringify({ alg: 'none', typ: 'JWT' }))
-    const body = b64url(JSON.stringify(payload))
-    const token = `${header}.${body}.mock`
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('token', token)
-      localStorage.setItem('accessToken', token)
-      localStorage.setItem('jwt', token)
-      document.cookie = `auth_token=${token}; Path=/; Max-Age=${60 * 60 * 8}; SameSite=Lax`
-      document.cookie = `accessToken=${token}; Path=/; Max-Age=${60 * 60 * 8}; SameSite=Lax`
-    }
-    return token
-  }
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      setShowVerifyMessage(params.get("verify") === "1");
+    } catch {}
+  }, []);
 
   const doLogin = async (emailArg: string, passwordArg: string) => {
     setLoading(true);
     setMsg("");
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("http://localhost:4000/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -49,25 +40,6 @@ export default function LoginPage() {
 
       if (!res.ok) {
         const errMsg = data?.message || data?.error || data?.detail || raw || "Invalid credentials";
-        if (process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true') {
-          const isAdmin = emailArg.trim().toLowerCase() === 'admin@csc.gov' && passwordArg === 'Admin@123'
-          const isUser = emailArg.trim().toLowerCase() === 'user@csc.gov' && passwordArg === 'User@123'
-          if (isAdmin || isUser) {
-            const roles = isAdmin ? ['ADMIN'] : ['EMPLOYEE']
-            const name = isAdmin ? 'Mock Admin' : 'Mock User'
-            setMockSession({
-              sub: emailArg.trim().toLowerCase(),
-              email: emailArg.trim().toLowerCase(),
-              name,
-              role: roles,
-              iat: Math.floor(Date.now() / 1000),
-              exp: Math.floor(Date.now() / 1000) + 60 * 60 * 8,
-            })
-            setMsg('Dev login fallback used. Redirecting...')
-            router.push(isAdmin ? '/users' : '/dashboard')
-            return
-          }
-        }
         throw new Error(String(errMsg));
       }
 
@@ -77,30 +49,49 @@ export default function LoginPage() {
         localStorage.setItem("token", val)
         localStorage.setItem("accessToken", val)
         localStorage.setItem("jwt", val)
+        // Persist session (token + backend user and decoded payload)
+        try {
+          saveAuthSession(val, data?.user ?? null)
+        } catch {}
+        // Safe client-side logging of user data
+        try {
+         
+          const decoded = decodeJwt(val)
+  
+        } catch {}
       }
       setMsg("Login successful. Redirecting...");
-      router.push("/dashboard");
-    } catch (err: any) {
-      if (process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true') {
-        const isAdmin = emailArg.trim().toLowerCase() === 'admin@csc.gov' && passwordArg === 'Admin@123'
-        const isUser = emailArg.trim().toLowerCase() === 'user@csc.gov' && passwordArg === 'User@123'
-        if (isAdmin || isUser) {
-          const roles = isAdmin ? ['ADMIN'] : ['EMPLOYEE']
-          const name = isAdmin ? 'Mock Admin' : 'Mock User'
-          setMockSession({
-            sub: emailArg.trim().toLowerCase(),
-            email: emailArg.trim().toLowerCase(),
-            name,
-            role: roles,
-            iat: Math.floor(Date.now() / 1000),
-            exp: Math.floor(Date.now() / 1000) + 60 * 60 * 8,
-          })
-          setMsg('Dev login fallback used. Redirecting...')
-          router.push(isAdmin ? '/users' : '/dashboard')
-          setLoading(false)
-          return
+      // Determine role-based dashboard
+      const primary = getCurrentUserPrimaryRole();
+      const { name: deptName } = getDepartmentInfo();
+
+      let target = "/dashboard/end-user";
+      if (primary === "admin") {
+        target = "/dashboard/admin";
+      } else if (primary === "commissioner") {
+        target = "/dashboard/Commissioner/Ethics_Anti_Corruption";
+      } else if (primary === "ethics_anti_corruption") {
+        target = "/dashboard/Ethics_Anti_Corruption";
+      } else if (primary === "women_social_inclusion") {
+        target = "/dashboard/department-head/women-social-inclusion";
+      } else if (primary === "department_head") {
+        if (deptName === "Executive Director, Women and Social Inclusion Program") {
+          target = "/dashboard/department-head/women-social-inclusion";
+        } else {
+          target = "/dashboard/department-head";
         }
+      } else if (primary === "") {
+        // No dedicated HR supervisor area anymore; fall back to department-head dashboard
+        target = "/dashboard/department-head";
+      } else if (primary === "driver") {
+        target = "/fleet/driver";
+      } else if (primary === "maintenance_team") {
+        target = "/maintenance-team/";
       }
+
+      // Default falls back to end-user dashboard
+      router.push(target);
+    } catch (err: any) {
       const safeMsg = (err && typeof err.message === 'string' && err.message) || 'Login failed'
       setMsg(safeMsg)
     } finally {
@@ -116,30 +107,29 @@ export default function LoginPage() {
   return (
     <div
       style={{
+        position: "fixed",
+        inset: 0,
         minHeight: "100vh",
         width: "100vw",
-        marginLeft: "calc(50% - 50vw)",
+        overflow: "hidden",
         display: "flex",
         alignItems: "stretch",
         justifyContent: "center",
-        background: "#0f172a",
+        background: "#ffffff", // ensure no off-white gutter is visible
       }}
     >
       <div
         style={{
-          width: "100%",
-          maxWidth: 1180,
+          width: "100vw",
+          height: "100vh",
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           gap: 0,
-          padding: 16,
         }}
       >
         <div
           style={{
-            background:
-              "radial-gradient(1200px 600px at 100% 0%, rgba(255,255,255,0.06), transparent 60%), linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #0ea5e9 100%)",
-            borderRadius: 14,
+            background: "#00579b",
             color: "#fff",
             padding: 32,
             display: "flex",
@@ -147,73 +137,57 @@ export default function LoginPage() {
             justifyContent: "center",
             gap: 20,
             boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+            height: "100%",
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{
-              width: 128,
-              height: 128,
-              borderRadius: 24,
-              background: "rgba(255,255,255,0.25)",
+              width: 400,
+              height: 220,
+              borderRadius: 12,
+              background: "#ffffff",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: 28,
-              backdropFilter: "blur(2px)",
-              boxShadow: "0 10px 25px rgba(0,0,0,0.25)",
-              border: "1px solid rgba(255,255,255,0.35)",
+              marginBottom: 32,
+              boxShadow: "0 6px 18px rgba(15,23,42,0.35)",
+              border: "1px solid rgba(148,163,184,0.7)",
+              overflow: "hidden",
             }}>
               <Image
                 src="/gallery/FCSC.jpg"
                 alt="FCSC Logo"
-                width={112}
-                height={112}
+                width={220}
+                height={220}
                 priority
-                style={{ borderRadius: 16, objectFit: "cover", background: "#ffffff" }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  borderRadius: 8,
+                  background: "#ffffff",
+                }}
               />
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.2, marginBottom: 12 }}>የፌደራል ሲቪል ሰርቪስ ኮሚሽን</div>
-              <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.2, marginBottom: 24 }}>Federal Civil Service Commission</div>
-              <div style={{ fontSize: 14, fontWeight: 800, opacity: 0.95, letterSpacing: 0.3 }}>INTEGRATED CSC DIGITAL SOLUTION</div>
+              <div style={{ fontSize: 14, fontWeight: 800, opacity: 0.95, letterSpacing: 0.3, color: 'normal' }}>የተቀናጀ የሲቪል ሰርቪስ ኮሚሽን ዲጂታል ሶሊዩሽን</div>
+              <div style={{ fontSize: 14, fontWeight: 800, opacity: 0.95, letterSpacing: 0.3, color: 'pink' }}>ቀላል ፣ ቀልጣፋና ደህንነቱ የተጠበቀ</div>
             </div>
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
-            <Link
-              href="/about"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-                background: "rgba(255,255,255,0.14)",
-                color: "#fff",
-                padding: "12px 18px",
-                borderRadius: 12,
-                textDecoration: "none",
-                fontWeight: 800,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
-              }}
-            >
-              Learn More About Us
-              <span>↗</span>
-            </Link>
           </div>
         </div>
 
         <div
           style={{
             background: "#ffffff",
-            borderRadius: 14,
-            boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
-            padding: 28,
+            boxShadow: "none",
+            padding: 0,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            height: "100%",
           }}
         >
-          <div style={{ width: "100%", maxWidth: 420 }}>
+          <div style={{ width: "100%", maxWidth: 440, marginRight: 0 }}>
             <div style={{ textAlign: "center", marginBottom: 18 }}>
               <div style={{
                 width: 64,
@@ -229,11 +203,11 @@ export default function LoginPage() {
               }}>
                 <span style={{ fontSize: 28 }}>🔒</span>
               </div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>Welcome ICSCDS</div>
-              <div style={{ fontSize: 13, color: "#64748b" }}>Sign in to your account</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>እንኳን ደህና መጡ</div>
+              <div style={{ fontSize: 13, color: "#64748b" }}>በመጠቀሚያ አካዉንትዎ ይግቡ</div>
             </div>
 
-            {searchParams?.get("verify") === "1" && (
+            {showVerifyMessage && (
               <div style={{
                 marginBottom: 12,
                 padding: "10px 12px",
@@ -273,14 +247,11 @@ export default function LoginPage() {
                 />
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+              <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", marginTop: 2 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#475569" }}>
                   <input type="checkbox" style={{ width: 16, height: 16 }} />
                   Remember Me
                 </label>
-                <Link href="/forgot-password" style={{ fontSize: 13, color: "#2563eb", fontWeight: 700, textDecoration: "none" }}>
-                  Forgot Password?
-                </Link>
               </div>
 
               <button
@@ -312,4 +283,8 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
+
+export default function LoginPage() {
+  return <LoginPageInner />;
 }

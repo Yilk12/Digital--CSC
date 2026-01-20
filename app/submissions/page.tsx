@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { useLocalization } from "@/hooks/use-localization"
+import { useLocalization } from "@/app/hooks/use-localization"
 
 type SubmissionType = "COMPLAINT" | "SUGGESTION"
 

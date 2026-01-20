@@ -1,7 +1,6 @@
 "use client"
 
 import React from "react"
-import { useSearchParams } from "next/navigation"
 
 type TCOForm = {
   requestId: string
@@ -16,7 +15,6 @@ type TCOForm = {
 }
 
 export default function FinanceTCOPage() {
-  const params = useSearchParams()
   const [loading, setLoading] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
   const [message, setMessage] = React.useState<string>("")
@@ -41,7 +39,9 @@ export default function FinanceTCOPage() {
 
   // Prefill by requestId
   React.useEffect(() => {
-    const rid = params.get('requestId') || ''
+    if (typeof window === 'undefined') return
+    const sp = new URLSearchParams(window.location.search)
+    const rid = sp.get('requestId') || ''
     if (!rid) return
     setForm(prev => ({ ...prev, requestId: rid }))
     setLoading(true)
@@ -58,7 +58,7 @@ export default function FinanceTCOPage() {
         }))
       })
       .finally(() => setLoading(false))
-  }, [params])
+  }, [])
 
   // Load recent TCO records
   const loadRecent = React.useCallback(() => {

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { GenerateReportDto } from './dto/generate-report.dto'
-import { UserRole, TicketStatus, TicketPriority, ArticleStatus, ScheduleStatus } from '@prisma/client'
+import { Prisma, UserRole, TicketStatus, TicketPriority, ArticleStatus, ScheduleStatus, ReportFrequency } from '@prisma/client'
 
 @Injectable()
 export class ReportsService {
@@ -67,7 +67,7 @@ export class ReportsService {
     const { dateFrom, dateTo, format } = generateReportDto
     
     const agents = await this.prisma.user.findMany({
-      where: { role: { in: [UserRole.SUPPORT_AGENT, UserRole.STAFF_MANAGER] }, isActive: true },
+      where: { role: { in: [UserRole.SUPPORT_AGENT, UserRole.Department_Head] }, isActive: true },
       select: { id: true, firstName: true, lastName: true, email: true, role: true }
     })
 
@@ -262,10 +262,6 @@ export class ReportsService {
     const [articles, searchStats] = await Promise.all([
       this.prisma.article.findMany({
         where,
-        include: {
-          author: { select: { firstName: true, lastName: true } },
-          category: { select: { name: true } }
-        }
       }),
       this.getSearchStats(dateFrom, dateTo)
     ])
@@ -282,8 +278,6 @@ export class ReportsService {
       articles: articles.map(article => ({
         id: article.id,
         title: article.title,
-        author: `${article.author.firstName} ${article.author.lastName}`,
-        category: article.category?.name || 'Uncategorized',
         status: article.status,
         viewCount: article.viewCount || 0,
         likeCount: article.likeCount || 0,
@@ -392,14 +386,14 @@ export class ReportsService {
     }
   }
 
-  private calculateNextRunTime(frequency: string): Date {
+  private calculateNextRunTime({ frequency }: { frequency: ReportFrequency }): Date {
     const now = new Date()
     switch (frequency) {
-      case 'daily':
+      case ReportFrequency.DAILY:
         return new Date(now.getTime() + 24 * 60 * 60 * 1000)
-      case 'weekly':
+      case ReportFrequency.WEEKLY:
         return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      case 'monthly':
+      case ReportFrequency.MONTHLY:
         return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
       default:
         return new Date(now.getTime() + 24 * 60 * 60 * 1000)
@@ -452,7 +446,7 @@ export class ReportsService {
   async exportDashboardData(format: string, userId: string, userRole: UserRole) {
     const [totalTickets, openTickets, resolvedTickets] = await Promise.all([
       this.prisma.ticket.count(),
-      this.prisma.ticket.count({ where: { status: TicketStatus.OPEN } }),
+      this.prisma.ticket.count({ where: { status: { not: TicketStatus.RESOLVED } } }),
       this.prisma.ticket.count({ where: { status: TicketStatus.RESOLVED } }),
     ])
 
@@ -490,13 +484,13 @@ export class ReportsService {
     }
   }
 
-  async scheduleReport(reportType: string, config: any, frequency: string, recipients: string[], userId: string) {
-    const nextRun = this.calculateNextRunTime(frequency)
+  async scheduleReport(reportType: string, config: any, frequency: ReportFrequency, recipients: string[], userId: string) {
+    const nextRun = this.calculateNextRunTime({ frequency })
     const created = await this.prisma.reportSchedule.create({
       data: {
         reportType,
         config,
-        frequency: frequency as any,
+        frequency,
         recipients,
         scheduledById: userId,
         nextRun,

@@ -128,42 +128,31 @@
 
 /* Responsive Design for Header and Layout */
 @media (max-width: 768px) {
-  /* Hide sidebar on mobile */
-  aside {
-    display: none !important;
-  }
-  
-  /* Adjust main content margin for mobile */
-  main {
-    margin-left: 0 !important;
-    padding: 16px !important;
-  }
-  
   /* Mobile header adjustments */
   header nav {
     display: none !important;
   }
-  
+
   /* Show mobile menu toggle */
   .mobile-menu-toggle {
     display: flex !important;
   }
-  
+
   /* Mobile search bar */
   .mobile-search {
     display: block !important;
   }
-  
+
   /* Desktop search bar hidden on mobile */
   .desktop-search {
     display: none !important;
   }
-  
+
   /* Adjust header logo text */
   .header-logo-text {
     display: none !important;
   }
-  
+
   /* User menu text hidden on mobile */
   .user-menu-text {
     display: none !important;
@@ -175,15 +164,15 @@
   .desktop-search {
     display: block !important;
   }
-  
+
   .mobile-search {
     display: none !important;
   }
-  
+
   .header-logo-text {
     display: block !important;
   }
-  
+
   .user-menu-text {
     display: block !important;
   }
@@ -207,7 +196,7 @@ input:focus {
   .header {
     border-bottom: 2px solid #000;
   }
-  
+
   .footer {
     border-top: 2px solid #000;
   }
@@ -221,7 +210,6 @@ input:focus {
   }
 }
 
-
 /* Delicate watermark style for header search input */
 .search-watermark::placeholder {
   color: #64748b; /* slate-500 */
@@ -231,8 +219,12 @@ input:focus {
 }
 
 /* Center watermark text only when placeholder is visible */
-.search-watermark { text-align: left; }
-.search-watermark:placeholder-shown { text-align: center; }
+.search-watermark {
+  text-align: left;
+}
+.search-watermark:placeholder-shown {
+  text-align: center;
+}
 
 /* Required field asterisk marker */
 .required-marker::after {

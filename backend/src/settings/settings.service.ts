@@ -7,13 +7,13 @@ export class SettingsService {
 
   async listSettings() {
     return this.prisma.systemSetting.findMany({
-      orderBy: { settingKey: "asc" },
+      orderBy: { key: "asc" },
     })
   }
 
   async getSetting(settingKey: string) {
     const setting = await this.prisma.systemSetting.findUnique({
-      where: { settingKey },
+      where: { key: settingKey },
     })
     if (!setting) throw new NotFoundException("Setting not found")
     return setting
@@ -21,23 +21,21 @@ export class SettingsService {
 
   async upsertSetting(settingKey: string, settingValue: string) {
     return this.prisma.systemSetting.upsert({
-      where: { settingKey },
-      update: { settingValue },
-      create: { settingKey, settingValue },
+      where: { key: settingKey },
+      update: { value: settingValue },
+      create: { key: settingKey, value: settingValue },
     })
   }
 
   async upsertMany(settings: Record<string, string>) {
     const operations = Object.entries(settings).map(([key, value]) =>
       this.prisma.systemSetting.upsert({
-        where: { settingKey: key },
-        update: { settingValue: value },
-        create: { settingKey: key, settingValue: value },
+        where: { key },
+        update: { value },
+        create: { key, value },
       }),
     )
     await this.prisma.$transaction(operations)
     return this.listSettings()
   }
 }
-
-

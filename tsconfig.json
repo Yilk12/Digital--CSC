@@ -13,6 +13,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "ignoreDeprecations": "5.0",
     "plugins": [
       {
         "name": "next"
@@ -27,10 +28,10 @@
     "next-env.d.ts", 
     "app/**/*.ts", 
     "app/**/*.tsx", 
-    "components/**/*.ts", 
-    "components/**/*.tsx", 
-    "hooks/**/*.ts", 
-    "lib/**/*.ts", 
+    "app/components/**/*.ts", 
+    "app/components/**/*.tsx", 
+    "app/hooks/**/*.ts", 
+    "backend/lib/**/*.ts", 
     ".next/types/**/*.ts"
   ],
   "exclude": ["node_modules", "backend", "dist"]

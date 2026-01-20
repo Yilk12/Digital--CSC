@@ -104,7 +104,7 @@ export class SearchController {
   @ApiOperation({ summary: "Get search analytics" })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Get("analytics")
   async getSearchAnalytics(
     @Query("period") period = "month",

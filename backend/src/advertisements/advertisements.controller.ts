@@ -57,7 +57,7 @@ export class AdvertisementsController {
   @HttpPost()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPPORT_AGENT, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.SUPPORT_AGENT, UserRole.Department_Head)
   @ApiOperation({ summary: 'Create advertisement' })
   create(@Body() dto: CreateAdvertisementDto) {
     return this.service.create(dto)
@@ -67,7 +67,7 @@ export class AdvertisementsController {
   @Patch(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPPORT_AGENT, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.SUPPORT_AGENT, UserRole.Department_Head)
   @ApiOperation({ summary: 'Update advertisement' })
   @ApiParam({ name: 'id' })
   update(@Param('id') id: string, @Body() dto: UpdateAdvertisementDto) {
@@ -78,7 +78,7 @@ export class AdvertisementsController {
   @Delete(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPPORT_AGENT, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.SUPPORT_AGENT, UserRole.Department_Head)
   @ApiOperation({ summary: 'Remove advertisement' })
   @ApiParam({ name: 'id' })
   remove(@Param('id') id: string) {
@@ -89,7 +89,7 @@ export class AdvertisementsController {
   @HttpPost(':id/attachments')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPPORT_AGENT, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.SUPPORT_AGENT, UserRole.Department_Head)
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FilesInterceptor('files', 10))
   @ApiOperation({ summary: 'Upload attachments for advertisement' })

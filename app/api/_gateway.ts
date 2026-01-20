@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { API_BASE_URL } from "@/app/lib/api";
 
 // Forwards a Next.js API Route request to the backend NestJS API.
 // Preserves method, headers (excluding hop-by-hop/host), body, and query string.
 export async function forwardToBackend(req: NextRequest, targetPath: string, init?: RequestInit) {
-  const url = new URL(req.url);
-  const qs = url.search ? url.search : "";
-  const targetUrl = `${API_BASE_URL}${targetPath}${qs}`;
+  const url = new URL(req.url)
+  const qs = url.search ? url.search : ""
+  // Resolve backend origin with safe defaults
+  const explicitOrigin = (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || '').trim()
+  const requestOrigin = (req.nextUrl?.origin) || `${req.headers.get('x-forwarded-proto') || 'http'}://${req.headers.get('host')}`
+  const defaultBackend = 'http://localhost:4000'
+  const isFrontendOrigin = typeof requestOrigin === 'string' && /:\\s*3000\b|:3000\b/.test(requestOrigin)
+  const baseOrigin = (explicitOrigin.length > 0 ? explicitOrigin : (isFrontendOrigin ? defaultBackend : (requestOrigin || defaultBackend)))
+  const targetUrl = new URL(targetPath + qs, baseOrigin.replace(/\/$/, '')).toString()
 
   const headers = new Headers();
   // Copy headers selectively

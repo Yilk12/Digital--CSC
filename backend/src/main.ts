@@ -4,6 +4,10 @@ import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger"
 import { AppModule } from "./app.module"
 import { I18nValidationPipe, I18nValidationExceptionFilter, I18nService } from 'nestjs-i18n'
 import { Request, Response } from 'express'
+import cookieParser from 'cookie-parser'
+import helmet from 'helmet'
+import * as express from 'express'
+import { join } from 'path'
 import { I18nExceptionFilter } from './common/filters/i18n-exception.filter'
 
 async function bootstrap() {
@@ -14,12 +18,15 @@ async function bootstrap() {
     res.json({ message: 'ECSC Helpdesk API is running', status: 'ok' })
   })
 
+  // Security & cookies
+  app.use(helmet())
+  app.use(cookieParser())
+
   // Enable CORS for frontend
+  const corsOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
   app.enableCors({
-    origin: [
+    origin: corsOrigins.length ? corsOrigins : [
       "http://localhost:3000",
-      "http://localhost:3001",
-      "https://your-frontend-domain.com",
     ],
     credentials: true,
     methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
@@ -28,7 +35,7 @@ async function bootstrap() {
   })
 
   // API prefix
-  app.setGlobalPrefix("api/v1")
+  app.setGlobalPrefix("api")
 
   // Global i18n-aware validation pipe
   app.useGlobalPipes(
@@ -58,7 +65,13 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config)
   SwaggerModule.setup("api/docs", app, document)
 
-  const port = process.env.PORT || 3005
+  // Serve static uploads (e.g. /uploads/articles/...) so attachments are directly readable in browser
+  app.use(
+    '/uploads',
+    express.static(join(process.cwd(), 'uploads')),
+  )
+
+  const port = process.env.PORT || 3001
   await app.listen(port)
 
   console.log(`🚀 Application is running on: http://localhost:${port}`)

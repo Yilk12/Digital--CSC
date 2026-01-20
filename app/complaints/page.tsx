@@ -40,6 +40,7 @@ export default function ComplaintsPage() {
     return rr.map(String).map(r=>r.toUpperCase());
   }, [jwt]);
 
+
   const isDirector = roles.some(r=>/(GENERAL_DIRECTOR|DIRECTOR|ADMIN|SUPERUSER)/.test(r));
   const isDeptHead = roles.some(r=>/(DEPARTMENT_HEAD|DEPT_HEAD)/.test(r));
   const isEmployee = roles.some(r=>/(EMPLOYEE|STAFF)/.test(r));
@@ -183,7 +184,7 @@ export default function ComplaintsPage() {
       {/* Confirmation */}
       {confirmation && (
         <div className="border rounded p-3 bg-green-50">
-          <div className="font-semibold">Submitted successfully</div>
+          <div className="font-semibold">በትክክል ተልኳል</div>
           <div>Reference Number: <span className="font-mono">{confirmation.ref}</span></div>
           <div className="mt-2 flex gap-2">
             <button className="px-3 py-2 border rounded" onClick={handlePrint}>Print Copy</button>

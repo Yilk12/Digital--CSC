@@ -3,9 +3,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Send, MessageCircle, User, Bot, Users, Plus, Wifi, WifiOff, ArrowLeft, Lock, Globe } from "lucide-react";
 import { chatApi, ChatMessage, ChatConversation, ChatUser } from "@/app/lib/chat-api";
-import { useChatWebSocket } from "@/hooks/use-chat-websocket";
-import SidebarCmp from "@/components/chat/Sidebar";
-import ChatPanelCmp from "@/components/chat/ChatPanel";
+import { useChatWebSocket } from "@/app/hooks/use-chat-websocket";
+import SidebarCmp from "@/app/components/chat/Sidebar";
+import ChatPanelCmp from "@/app/components/chat/ChatPanel";
 import { getCurrentUserId, decodeJwt } from "@/app/lib/auth";
 import { API_BASE_URL } from "@/app/lib/api";
 

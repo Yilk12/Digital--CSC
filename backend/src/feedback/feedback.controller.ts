@@ -1,11 +1,11 @@
 import { Body, Controller, Get, Post, Query, Request, UseGuards } from "@nestjs/common"
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger"
 import { FeedbackService } from "./feedback.service"
-import { CreateFeedbackDto } from "./dto/create-feedback.dto"
+import { CreateFeedbackDto, FEEDBACK_TYPES } from "./dto/create-feedback.dto"
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard"
 import { Roles } from "../auth/decorators/roles.decorator"
 import { RolesGuard } from "../auth/guards/roles.guard"
-import { type $Enums, UserRole, FeedbackType } from "@prisma/client"
+import { type $Enums, UserRole } from "@prisma/client"
 
 @ApiTags("Feedback")
 @Controller("feedback")
@@ -29,16 +29,16 @@ export class FeedbackController {
   @ApiOperation({ summary: "List feedback (restricted)" })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER, UserRole.GENERAL_DIRECTOR)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head, UserRole.Commissioner)
   @ApiQuery({ name: "departmentId", required: false, type: String })
-  @ApiQuery({ name: "type", required: false, enum: FeedbackType })
+  @ApiQuery({ name: "type", required: false, enum: FEEDBACK_TYPES })
   @ApiQuery({ name: "from", required: false, type: String, description: "ISO date" })
   @ApiQuery({ name: "to", required: false, type: String, description: "ISO date" })
   @Get()
   async list(
     @Request() req: any,
     @Query("departmentId") departmentId?: string,
-    @Query("type") type?: $Enums.FeedbackType,
+    @Query("type") type?: typeof FEEDBACK_TYPES[number],
     @Query("from") from?: string,
     @Query("to") to?: string,
   ) {

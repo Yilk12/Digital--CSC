@@ -64,7 +64,6 @@ export class KnowledgeBaseAnalyticsService {
       ],
       take: limit,
       include: {
-        author: { select: { firstName: true, lastName: true } },
         category: { select: { name: true } },
         tags: { include: { tag: { select: { name: true } } } },
         _count: {
@@ -83,7 +82,6 @@ export class KnowledgeBaseAnalyticsService {
         return {
           id: article.id,
           tagCount: 0,
-          author: `${article.author.firstName} ${article.author.lastName}`,
           tags: [],
           category: article.category?.name || 'Uncategorized',
           viewCount: true,
@@ -305,41 +303,7 @@ export class KnowledgeBaseAnalyticsService {
     }
   }
 
-  async getAuthorPerformance(period: string) {
-    const dateRange = this.getDateRange(period)
-    
-    const authors = await this.prisma.user.findMany({
-      where: { role: { in: [UserRole.ADMIN, UserRole.SUPPORT_AGENT] } },
-      include: {
-        createdArticles: {
-          select: { id: true, title: true, viewCount: true, likeCount: true, status: true, _count: { select: { comments: true } } }
-        }
-      }
-    })
-
-    const authorPerformance = authors.map(author => {
-      const articles = author.createdArticles
-      const publishedArticles = articles.filter(article => article.status === ArticleStatus.PUBLISHED)
-      const totalViews = publishedArticles.reduce((sum, article) => sum + article.viewCount, 0)
-      const totalLikes = publishedArticles.reduce((sum, article) => sum + article.likeCount, 0)
-
-      return {
-        author: `${author.firstName} ${author.lastName}`,
-        email: author.email,
-        articlesCreated: articles.length,
-        articlesPublished: publishedArticles.length,
-        totalViews,
-        totalLikes,
-        avgViewsPerArticle: publishedArticles.length > 0 ? (totalViews / publishedArticles.length).toFixed(2) : 0,
-        engagementRate: publishedArticles.length > 0 ? ((publishedArticles.reduce((sum, article) => sum + article.likeCount, 0) + publishedArticles.reduce((sum, article) => sum + article._count.comments, 0)) / totalViews * 100).toFixed(2) : '0'
-      }
-    })
-
-    return {
-      period,
-      authors: authorPerformance.sort((a, b) => b.totalViews - a.totalViews)
-    }
-  }
+  
 
   async getLanguageDistribution(userRole: UserRole) {
     const languageStats = await this.prisma.article.groupBy({
@@ -367,7 +331,7 @@ export class KnowledgeBaseAnalyticsService {
         createdAt: { gte: dateRange.start, lte: dateRange.end }
       },
       include: {
-        article: { select: { title: true, author: { select: { firstName: true, lastName: true } } } }
+        article: { select: { title: true } }
       }
     })
 
@@ -388,7 +352,6 @@ export class KnowledgeBaseAnalyticsService {
       },
       recentFeedback: feedback.slice(0, 10).map(f => ({
         articleTitle: f.article.title,
-        author: `${f.article.author.firstName} ${f.article.author.lastName}`,
         rating: f.isLike ? 5 : 1,
         comment: null, // Not available in current schema
         isHelpful: f.isLike,
@@ -644,9 +607,7 @@ export class KnowledgeBaseAnalyticsService {
   private buildWhereClause(userId: string, userRole: UserRole) {
     const where: any = {}
     
-    if (userRole === UserRole.SUPPORT_AGENT) {
-      where.authorId = userId
-    }
+    // author-based filtering removed
     
     return where
   }

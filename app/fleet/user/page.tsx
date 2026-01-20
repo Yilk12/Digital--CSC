@@ -97,14 +97,14 @@ export default function UserPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
             <div>
-            <h1 className="text-3xl font-bold text-gray-900">Employee Dashboard</h1>
-            <p className="text-gray-600 mt-2">Welcome, {userName} - {userDepartment} Department</p>
+            <h1 className="text-3xl font-bold text-gray-900">የሰራተኛዉ ገፅ</h1>
+            <p className="text-gray-600 mt-2">እንኳን ደህና መጡ, {userName} - {userDepartment} የስራ ክፍል</p>
             </div>
           <Link 
             href="/fleet" 
             className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
           >
-            ← Back to Fleet Hub
+            ← ወደ ኋላ ተመለስ
           </Link>
             </div>
           </div>
@@ -119,7 +119,7 @@ export default function UserPage() {
               </svg>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Requests</p>
+              <p className="text-sm font-medium text-gray-600">ጠቅላላ የተጠየቀ</p>
               <p className="text-2xl font-semibold text-gray-900">{userStats.totalRequests}</p>
             </div>
           </div>
@@ -133,7 +133,7 @@ export default function UserPage() {
               </svg>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Pending</p>
+              <p className="text-sm font-medium text-gray-600">በመጠባበቅ ላይ</p>
               <p className="text-2xl font-semibold text-gray-900">{userStats.pendingRequests}</p>
             </div>
           </div>
@@ -147,7 +147,7 @@ export default function UserPage() {
               </svg>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Approved</p>
+              <p className="text-sm font-medium text-gray-600">የፀደቀ</p>
               <p className="text-2xl font-semibold text-gray-900">{userStats.approvedRequests}</p>
             </div>
             </div>
@@ -161,7 +161,7 @@ export default function UserPage() {
               </svg>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Completed</p>
+              <p className="text-sm font-medium text-gray-600">የተጠናቀቀ</p>
               <p className="text-2xl font-semibold text-gray-900">{userStats.completedRequests}</p>
             </div>
           </div>
@@ -195,13 +195,13 @@ export default function UserPage() {
       {activeTab === 'request' && (
         <div className="bg-white rounded-lg shadow border">
           <div className="px-6 py-4 border-b">
-            <h3 className="text-lg font-medium text-gray-900">Submit Vehicle Request</h3>
+            <h3 className="text-lg font-medium text-gray-900">የመኪና ጥያቄ ላክ</h3>
           </div>
           <div className="p-6">
             <form className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Employee Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">የሰራተኛዉ ስም *</label>
                   <input 
                     type="text" 
                     defaultValue={userName}
@@ -210,7 +210,7 @@ export default function UserPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">የሰራተኛዉ ID *</label>
                   <input 
                     type="text" 
                     defaultValue="EMP001"
@@ -219,7 +219,7 @@ export default function UserPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">የስራ ክፍል *</label>
                   <input 
                     type="text" 
                     defaultValue={userDepartment}
@@ -280,7 +280,7 @@ export default function UserPage() {
       {activeTab === 'requests' && (
         <div className="bg-white rounded-lg shadow border">
           <div className="px-6 py-4 border-b">
-            <h3 className="text-lg font-medium text-gray-900">My Vehicle Requests</h3>
+            <h3 className="text-lg font-medium text-gray-900">የኔ የመኪና ጥያቄ</h3>
           </div>
           <div className="p-6">
             {requests.length === 0 ? (
@@ -321,7 +321,7 @@ export default function UserPage() {
       {activeTab === 'history' && (
         <div className="bg-white rounded-lg shadow border">
           <div className="px-6 py-4 border-b">
-            <h3 className="text-lg font-medium text-gray-900">Request History</h3>
+            <h3 className="text-lg font-medium text-gray-900">የመኪና ጥያቄ ዝርዝር</h3>
             </div>
           <div className="p-6">
             <div className="overflow-x-auto">

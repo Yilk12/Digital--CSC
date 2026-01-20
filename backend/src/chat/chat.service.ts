@@ -372,7 +372,7 @@ export class ChatService {
   async getDepartmentUsers(departmentId: string): Promise<ChatUser[]> {
     const users = await this.prisma.user.findMany({
       where: {
-        department: departmentId,
+        departmentId: departmentId,
         isActive: true,
         userType: UserType.INTERNAL,
       },

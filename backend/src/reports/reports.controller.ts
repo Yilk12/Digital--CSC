@@ -15,7 +15,7 @@ import { GenerateReportDto } from "./dto/generate-report.dto"
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard"
 import { RolesGuard } from "../auth/guards/roles.guard"
 import { Roles } from "../auth/decorators/roles.decorator"
-import { UserRole } from "@prisma/client"
+import { UserRole, ReportFrequency } from "@prisma/client"
 
 @ApiTags("Help Desk Reports")
 @ApiBearerAuth()
@@ -26,42 +26,42 @@ export class ReportsController {
 
   @ApiOperation({ summary: "Generate comprehensive ticket report" })
   @ApiResponse({ status: 200, description: "Report generated successfully" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Post("tickets")
   generateTicketReport(@Body() generateReportDto: GenerateReportDto, @Request() req) {
     return this.reportsService.generateTicketReport(generateReportDto, req.user.userId)
   }
 
   @ApiOperation({ summary: "Generate agent performance report" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Post("agent-performance")
   generateAgentPerformanceReport(@Body() generateReportDto: GenerateReportDto, @Request() req) {
     return this.reportsService.generateAgentPerformanceReport(generateReportDto, req.user.userId)
   }
 
   @ApiOperation({ summary: "Generate SLA compliance report" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Post("sla-compliance")
   generateSlaReport(@Body() generateReportDto: GenerateReportDto, @Request() req) {
     return this.reportsService.generateSlaReport(generateReportDto, req.user.userId)
   }
 
   @ApiOperation({ summary: "Generate department performance report" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Post("department-performance")
   generateDepartmentReport(@Body() generateReportDto: GenerateReportDto, @Request() req) {
     return this.reportsService.generateDepartmentReport(generateReportDto, req.user.userId)
   }
 
   @ApiOperation({ summary: "Generate customer satisfaction report" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Post("customer-satisfaction")
   generateSatisfactionReport(@Body() generateReportDto: GenerateReportDto, @Request() req) {
     return this.reportsService.generateSatisfactionReport(generateReportDto, req.user.userId)
   }
 
   @ApiOperation({ summary: "Generate knowledge base analytics report" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Post("knowledge-base")
   generateKnowledgeBaseReport(@Body() generateReportDto: GenerateReportDto, @Request() req) {
     return this.reportsService.generateKnowledgeBaseReport(generateReportDto, req.user.userId)
@@ -100,7 +100,7 @@ export class ReportsController {
   }
 
   @ApiOperation({ summary: "Schedule recurring report" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Post("schedule")
   scheduleReport(
     @Body() body: {
@@ -111,31 +111,37 @@ export class ReportsController {
     },
     @Request() req
   ) {
+    const frequencyMap = {
+      daily: ReportFrequency.DAILY,
+      weekly: ReportFrequency.WEEKLY,
+      monthly: ReportFrequency.MONTHLY,
+    } as const
+    const frequency = frequencyMap[body.frequency]
     return this.reportsService.scheduleReport(
       body.reportType,
       body.parameters,
-      body.frequency,
+      frequency,
       body.recipients,
       req.user.userId
     )
   }
 
   @ApiOperation({ summary: "Get scheduled reports" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Get("scheduled")
   getScheduledReports(@Request() req) {
     return this.reportsService.getScheduledReports(req.user.userId, req.user.role)
   }
 
   @ApiOperation({ summary: "Cancel scheduled report" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Post("scheduled/:scheduleId/cancel")
   cancelScheduledReport(@Query("scheduleId") scheduleId: string, @Request() req) {
     return this.reportsService.cancelScheduledReport(scheduleId, req.user.userId)
   }
 
   @ApiOperation({ summary: "Get report statistics" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Get("statistics")
   getReportStatistics(@Request() req) {
     return this.reportsService.getReportStatistics(req.user.role)

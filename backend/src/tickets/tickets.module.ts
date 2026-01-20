@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common"
 import { MulterModule } from "@nestjs/platform-express"
 import { ConfigModule, ConfigService } from "@nestjs/config"
+import { PrismaModule } from "../prisma/prisma.module"
 import { TicketsService } from "./tickets.service"
 import { TicketsController } from "./tickets.controller"
 import { CommentsService } from "./comments.service"
@@ -10,6 +11,7 @@ import { extname } from "path"
 
 @Module({
   imports: [
+    PrismaModule,
     MulterModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

@@ -1,15 +1,21 @@
 import React from "react"
-import dynamic from "next/dynamic"
-
-const RequestForm = dynamic(() => import("@/components/request-form"), { ssr: false })
+import Link from "next/link"
 
 export default function DriverPage() {
   return (
-    <main style={{ padding: 20, display: "flex", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: 1000 }}>
-        <h2 style={{ marginTop: 0 }}>Driver Dashboard</h2>
-        {/* Request form only shown for drivers (component does role detection) */}
-        <RequestForm />
+    <main className="px-4 py-6 flex justify-center">
+      <div className="w-full max-w-4xl space-y-4">
+        <h2 className="text-2xl font-semibold"></h2>
+
+        <Link
+          href="/fleet/driver"
+          className="block border rounded bg-gradient-to-r from-green-100 to-pink-100 px-6 py-4"
+        >
+          <p className="text-lg font-semibold">
+            ጠቅላላ ገፅ
+          </p>
+        </Link>
+
         {/* ...other driver dashboard content... */}
       </div>
     </main>

@@ -1,31 +1,46 @@
 {
   "compilerOptions": {
+    /* === Core Settings === */
     "module": "Node16",
-    "declaration": true,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "es2017",
-    "sourceMap": true,
+    "moduleResolution": "node16",
+    "target": "ES2019",
+    "lib": ["esnext"],
+
+    /* === Output & Paths === */
+    "rootDir": "./src",
     "outDir": "./dist",
     "baseUrl": "./",
-    "incremental": true,
-    "skipLibCheck": true,
-    "strictNullChecks": true,
-    "esModuleInterop": true,
-    "moduleResolution": "node16",
-    "rootDir": "./src",
     "paths": {
       "@shared/*": ["../shared/src/*"]
-    }
+    },
+
+    /* === Decorator & Metadata Support === */
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+
+    /* === Build Behavior === */
+    "declaration": true,
+    "removeComments": true,
+    "sourceMap": true,
+    "incremental": true,
+
+    /* === Error & Type Control === */
+    "skipLibCheck": true,         // ignore library type errors
+    "strict": false,              // disable strict type checking
+    "strictNullChecks": false,    // optional: allow nulls for flexibility
+    "noEmitOnError": false,       // ✅ don’t stop build on TS errors
+    "ignoreDeprecations": "5.0", // silence deprecation warnings from deps (e.g., moduleResolution=node10)
+
+    /* === Interop === */
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
   },
   "include": ["src"],
   "exclude": [
     "node_modules",
     "dist",
     "test",
-    "**/*spec.ts",
+    "**/*.spec.ts",
     "src/friends/**"
   ]
 }

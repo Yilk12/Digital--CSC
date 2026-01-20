@@ -1,16 +1,31 @@
-import { Injectable, NotFoundException } from "@nestjs/common"
+import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common"
 import { PrismaService } from "../prisma/prisma.service"
 import { CreateDepartmentDto } from "./dto/create-department.dto"
 import { UpdateDepartmentDto } from "./dto/update-department.dto"
+import { UserRole } from "@prisma/client"
 
 @Injectable()
 export class DepartmentsService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateDepartmentDto) {
+    const name = (dto.name || '').trim()
+    if (!name) {
+      throw new BadRequestException('Department name is required')
+    }
+
+    // Validate unique name (case-insensitive)
+    const exists = await this.prisma.department.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' as const } },
+      select: { id: true },
+    })
+    if (exists) {
+      throw new BadRequestException('Department name already exists')
+    }
+
     const created = await this.prisma.department.create({
       data: {
-        name: dto.name,
+        name,
         nameAm: dto.nameAm ?? null,
         description: dto.description ?? null,
         isActive: dto.isActive ?? true,
@@ -28,8 +43,12 @@ export class DepartmentsService {
     return created
   }
 
-  async findAll(page = 1, limit = 10, search?: string) {
-    const skip = (page - 1) * limit
+  async findAll(page?: number, limit?: number, search?: string) {
+    const pageNumber = Number(page) || 1;
+    const pageLimit = Number(limit) || 10;
+    const skip = (pageNumber - 1) * pageLimit;
+    console.log("this is the user role",UserRole)
+  
     const where = {
       ...(search && {
         OR: [
@@ -38,13 +57,13 @@ export class DepartmentsService {
           { description: { contains: search, mode: "insensitive" as const } },
         ],
       }),
-    }
-
+    };
+  
     const [items, total] = await Promise.all([
       this.prisma.department.findMany({
         where,
         skip,
-        take: limit,
+        take: pageLimit,
         select: {
           id: true,
           name: true,
@@ -57,18 +76,20 @@ export class DepartmentsService {
         orderBy: { createdAt: "desc" },
       }),
       this.prisma.department.count({ where }),
-    ])
-
+    ]);
+  
     return {
       departments: items,
       pagination: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+        page: pageNumber,
+        limit: pageLimit,
+        totalPages: Math.ceil(total / pageLimit),
       },
-    }
+      
+    };
   }
+  
 
   async findById(id: string) {
     const department = await this.prisma.department.findUnique({

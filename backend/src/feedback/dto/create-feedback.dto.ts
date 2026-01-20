@@ -1,11 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min, IsIn } from "class-validator";
-import { type $Enums, FeedbackType, UserRole } from "@prisma/client";
+import { type $Enums, UserRole } from "@prisma/client";
+
+export const FEEDBACK_TYPES = ["ARTICLE", "TICKET", "GENERAL"] as const;
 
 export class CreateFeedbackDto {
-  @ApiProperty({ enum: FeedbackType }) // runtime enum object
-  @IsEnum(FeedbackType)
-  type!: $Enums.FeedbackType; // type
+  @ApiProperty({ enum: FEEDBACK_TYPES }) // runtime enum values for Swagger
+  @IsIn(FEEDBACK_TYPES as readonly string[])
+  type!: typeof FEEDBACK_TYPES[number]; // TS type from Prisma
 
   @ApiProperty({ description: "Department ID", format: "uuid" })
   @IsUUID()
@@ -85,5 +87,5 @@ export class CreateFeedbackDto {
   @ApiPropertyOptional({ enum: ["LOW", "MEDIUM", "HIGH"] })
   @IsOptional()
   @IsIn(["LOW", "MEDIUM", "HIGH"] as const)
-  escalationPriority?: $Enums.EscalationPriority;
+  escalationPriority?: "LOW" | "MEDIUM" | "HIGH";
 }

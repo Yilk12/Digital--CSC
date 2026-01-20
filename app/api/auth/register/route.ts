@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { API_BASE_URL, API_ORIGIN } from "@/app/lib/api"
 import { decodeJwt } from "@/app/lib/auth"
-import { validatePassword, defaultPolicy } from "@/lib/password-policy"
+import { validatePassword, defaultPolicy } from "@/backend/lib/password-policy"
 
 export async function POST(req: NextRequest) {
   try {
@@ -45,16 +45,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Prefer BACKEND_URL if present, otherwise API_BASE_URL from app/lib/api.ts
-    const origin = process.env.BACKEND_URL || API_ORIGIN
-    const url = `${(origin || '').replace(/\/$/, "")}/api/v1/auth/register`
+    // Resolve backend origin with safe defaults
+    // Order: BACKEND_URL -> NEXT_PUBLIC_API_URL -> request origin -> http://localhost:3001
+    const explicitOrigin = (process.env.BACKEND_URL || API_ORIGIN || '').trim()
+    const requestOrigin = req.nextUrl?.origin || `${req.headers.get('x-forwarded-proto') || 'http'}://${req.headers.get('host')}`
+    // Prevent recursion: if request origin is the Next app (likely :3000), prefer backend default :3001
+    const defaultBackend = 'http://localhost:3001'
+    const isFrontendOrigin = typeof requestOrigin === 'string' && /:\\s*3000\b|:3000\b/.test(requestOrigin)
+    const baseOrigin = explicitOrigin.length > 0
+      ? explicitOrigin
+      : (isFrontendOrigin ? defaultBackend : (requestOrigin || defaultBackend))
+    // Backend global prefix is set to `api` (see backend/src/main.ts)
+    const url = new URL('/api/auth/register', baseOrigin.replace(/\/$/, '')).toString()
     try {
       // Add a timeout to prevent hanging requests on unstable networks
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 8000)
       const backendResp = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(body),
         credentials: "include",
         signal: controller.signal,

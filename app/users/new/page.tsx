@@ -1,14 +1,17 @@
 "use client"
 
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { UserForm } from "@/components/user-form"
-import { DashboardLayout } from "@/components/dashboard-layout"
+import { Suspense } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/app/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { Separator } from "@/app/components/ui/separator"
+import { UserForm } from "@/app/components/user-form"
+import { DashboardLayout } from "@/app/components/dashboard-layout"
 import { ArrowLeft, UserPlus } from "lucide-react"
 
-export default function NewUserPage() {
+function NewUserPageInner() {
+  const router = useRouter()
   return (
     <DashboardLayout showHeading={false}>
       <div className="min-h-screen bg-background">
@@ -33,12 +36,20 @@ export default function NewUserPage() {
               <CardTitle>User Details</CardTitle>
             </CardHeader>
             <CardContent className="pt-2">
-              <UserForm onClose={() => {}}
+              <UserForm onClose={() => { router.push("/users") }}
               />
             </CardContent>
           </Card>
         </div>
       </div>
     </DashboardLayout>
+  )
+}
+
+export default function NewUserPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-gray-600">Loading user form...</div>}>
+      <NewUserPageInner />
+    </Suspense>
   )
 }

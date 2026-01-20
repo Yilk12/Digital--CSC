@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common"
-import  { PrismaService } from "../prisma/prisma.service"
+import { PrismaService } from "../prisma/prisma.service"
 import { TicketStatus, UserRole, ArticleStatus } from "@prisma/client"
 
 @Injectable()
@@ -19,7 +19,6 @@ export class AnalyticsService {
       ticketWhere.createdById = userId
     } else if (userRole === UserRole.SUPPORT_AGENT) {
       ticketWhere.OR = [{ createdById: userId }, { assigneeId: userId }]
-      articleWhere.authorId = userId
     }
 
     const [
@@ -52,7 +51,7 @@ export class AnalyticsService {
       // Ticket metrics
       this.prisma.ticket.count({ where: ticketWhere }),
       this.prisma.ticket.count({
-        where: { ...ticketWhere, status: TicketStatus.OPEN },
+        where: { ...ticketWhere, status: { not: TicketStatus.RESOLVED } },
       }),
       this.prisma.ticket.count({
         where: { ...ticketWhere, status: TicketStatus.RESOLVED },
@@ -61,7 +60,7 @@ export class AnalyticsService {
         where: {
           ...ticketWhere,
           slaDeadline: { lt: new Date() },
-          status: { notIn: [TicketStatus.RESOLVED, TicketStatus.CLOSED] },
+          status: { not: TicketStatus.RESOLVED },
         },
       }),
       this.prisma.ticket.count({
@@ -86,8 +85,8 @@ export class AnalyticsService {
       }),
 
       // User metrics (admin only)
-      userRole === UserRole.ADMIN || userRole === UserRole.GENERAL_DIRECTOR ? this.prisma.user.count() : 0,
-      userRole === UserRole.ADMIN || userRole === UserRole.GENERAL_DIRECTOR
+      userRole === UserRole.ADMIN || userRole === UserRole.Commissioner ? this.prisma.user.count() : 0,
+      userRole === UserRole.ADMIN || userRole === UserRole.Commissioner
         ? this.prisma.user.count({ where: { isActive: true } })
         : 0,
 
@@ -117,14 +116,11 @@ export class AnalyticsService {
           status: true,
           viewCount: true,
           createdAt: true,
-          author: {
-            select: { firstName: true, lastName: true },
-          },
         },
       }),
 
       // Agent performance (for managers and admins)
-      userRole === UserRole.ADMIN || userRole === UserRole.GENERAL_DIRECTOR || userRole === UserRole.STAFF_MANAGER
+      userRole === UserRole.ADMIN || userRole === UserRole.Commissioner || userRole === UserRole.Department_Head
         ? this.getAgentPerformanceMetrics()
         : [],
     ])
@@ -214,9 +210,7 @@ export class AnalyticsService {
   async getKnowledgeBaseAnalytics(startDate?: Date, endDate?: Date, userRole?: UserRole, userId?: string) {
     const where: any = {}
 
-    if (userRole === UserRole.SUPPORT_AGENT) {
-      where.authorId = userId
-    }
+    // No author-based filtering
 
     if (startDate && endDate) {
       where.createdAt = {
@@ -267,9 +261,9 @@ export class AnalyticsService {
         _count: { userType: true },
       }),
       this.prisma.user.groupBy({
-        by: ["department"],
-        where: { department: { not: null } },
-        _count: { department: true },
+        by: ["departmentId"],
+        where: { departmentId: { not: null } },
+        _count: { departmentId: true },
       }),
       this.getUserRegistrationTrend(),
       this.getUserActivityMetrics(),
@@ -278,7 +272,7 @@ export class AnalyticsService {
     return {
       byRole: this.formatGroupByResults(byRole, "role"),
       byUserType: this.formatGroupByResults(byUserType, "userType"),
-      byDepartment: this.formatGroupByResults(byDepartment, "department"),
+      byDepartment: this.formatGroupByResults(byDepartment, "departmentId"),
       registrationTrend,
       activityMetrics,
     }
@@ -482,9 +476,6 @@ export class AnalyticsService {
         viewCount: true,
         likeCount: true,
         language: true,
-        author: {
-          select: { firstName: true, lastName: true },
-        },
       },
       orderBy: { viewCount: "desc" },
       take: 10,
@@ -547,28 +538,18 @@ export class AnalyticsService {
   private async getUserActivityMetrics() {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
-    const [ticketCreators, articleAuthors, commenters] = await Promise.all([
+    const [ticketCreators] = await Promise.all([
       this.prisma.ticket.findMany({
         where: { createdAt: { gte: thirtyDaysAgo } },
         select: { createdById: true },
         distinct: ["createdById"],
       }),
-      this.prisma.article.findMany({
-        where: { createdAt: { gte: thirtyDaysAgo } },
-        select: { authorId: true },
-        distinct: ["authorId"],
-      }),
-      this.prisma.ticketComment.findMany({
-        where: { createdAt: { gte: thirtyDaysAgo } },
-        select: { authorId: true },
-        distinct: ["authorId"],
-      }),
     ])
 
     return {
       activeTicketCreators: ticketCreators.length,
-      activeArticleAuthors: articleAuthors.length,
-      activeCommenters: commenters.length,
+      activeArticleAuthors: 0,
+      activeCommenters: 0,
     }
   }
 

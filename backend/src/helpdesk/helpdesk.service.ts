@@ -22,13 +22,13 @@ export class HelpdeskService {
       avgResolutionTime
     ] = await Promise.all([
       this.prisma.ticket.count({ where }),
-      this.prisma.ticket.count({ where: { ...where, status: { in: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS] } } }),
+      this.prisma.ticket.count({ where: { ...where, status: { not: TicketStatus.RESOLVED } } }),
       this.prisma.ticket.count({ where: { ...where, status: TicketStatus.RESOLVED } }),
       this.prisma.ticket.count({
         where: {
           ...where,
           slaDeadline: { lt: new Date() },
-          status: { notIn: [TicketStatus.RESOLVED, TicketStatus.CLOSED] }
+          status: { not: TicketStatus.RESOLVED }
         }
       }),
       this.prisma.ticket.findMany({
@@ -118,7 +118,7 @@ export class HelpdeskService {
           ...where,
           OR: [
             { status: TicketStatus.RESOLVED, resolvedAt: { lte: this.prisma.ticket.fields.slaDeadline } },
-            { status: { notIn: [TicketStatus.RESOLVED, TicketStatus.CLOSED] }, slaDeadline: { gte: new Date() } }
+            { status: { notIn: [TicketStatus.RESOLVED, TicketStatus.PENDING] }, slaDeadline: { gte: new Date() } }
           ]
         }
       }),
@@ -127,7 +127,7 @@ export class HelpdeskService {
           ...where,
           OR: [
             { status: TicketStatus.RESOLVED, resolvedAt: { gt: this.prisma.ticket.fields.slaDeadline } },
-            { status: { notIn: [TicketStatus.RESOLVED, TicketStatus.CLOSED] }, slaDeadline: { lt: new Date() } }
+            { status: { notIn: [TicketStatus.RESOLVED, TicketStatus.PENDING] }, slaDeadline: { lt: new Date() } }
           ]
         }
       }),
@@ -146,7 +146,7 @@ export class HelpdeskService {
 
   async getAgentPerformance() {
     const agents = await this.prisma.user.findMany({
-      where: { role: { in: [UserRole.SUPPORT_AGENT, UserRole.STAFF_MANAGER] } },
+      where: { role: { in: [UserRole.SUPPORT_AGENT, UserRole.Department_Head] } },
       select: {
         id: true,
         firstName: true,
@@ -217,7 +217,7 @@ export class HelpdeskService {
       by: ["assigneeId"],
       _count: { assigneeId: true },
       where: {
-        status: { notIn: [TicketStatus.RESOLVED, TicketStatus.CLOSED] }
+        status: { not: TicketStatus.RESOLVED }
       }
     })
 
@@ -312,7 +312,7 @@ export class HelpdeskService {
     
     const [unassigned, inProgress, pending, overdue] = await Promise.all([
       this.prisma.ticket.count({
-        where: { ...where, assigneeId: null, status: TicketStatus.OPEN }
+        where: { ...where, assigneeId: null, status: { not: TicketStatus.RESOLVED } }
       }),
       this.prisma.ticket.count({
         where: { ...where, status: TicketStatus.IN_PROGRESS }
@@ -324,7 +324,7 @@ export class HelpdeskService {
         where: {
           ...where,
           slaDeadline: { lt: new Date() },
-          status: { notIn: [TicketStatus.RESOLVED, TicketStatus.CLOSED] }
+          status: { not: TicketStatus.RESOLVED }
         }
       })
     ])
@@ -344,7 +344,7 @@ export class HelpdeskService {
       where: {
         ...where,
         slaDeadline: { lt: new Date() },
-        status: { notIn: [TicketStatus.RESOLVED, TicketStatus.CLOSED] }
+        status: { not: TicketStatus.RESOLVED }
       },
       take: limit,
       orderBy: { slaDeadline: "asc" },

@@ -1,4 +1,4 @@
-import type { Complaint } from "@/types/complaints";
+import type { Complaint } from "@/backend/types/complaints";
 
 // In-memory complaints store (prototype). Resets on server restart.
 const store: { items: Complaint[] } = { items: [] };

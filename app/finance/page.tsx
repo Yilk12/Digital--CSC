@@ -2,8 +2,8 @@
 
 import React from "react"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/app/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 
 export default function FinanceDashboardPage() {
   return (
@@ -18,9 +18,16 @@ export default function FinanceDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Finance Dashboard</h1>
-        <div className="flex items-center gap-2">
-          <Link href="/finance/tco"><Button>Total Cost of Ownership</Button></Link>
-          <Link href="/finance/maintenance"><Button variant="secondary">Maintenance Batches</Button></Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link href="/finance/tco">
+            <Button>Total Cost of Ownership</Button>
+          </Link>
+          <Link href="/finance/maintenance">
+            <Button variant="secondary">Maintenance Batches</Button>
+          </Link>
+          <Link href="/finance/fleet-costs">
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">Fleet Cost</Button>
+          </Link>
         </div>
       </div>
 
@@ -31,8 +38,15 @@ export default function FinanceDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              <Link href="/finance/tco"><Button>Open TCO Calculator</Button></Link>
-              <Link href="/finance/maintenance"><Button className="bg-emerald-600 hover:bg-emerald-700">View Maintenance</Button></Link>
+              <Link href="/finance/tco">
+                <Button>Open TCO Calculator</Button>
+              </Link>
+              <Link href="/finance/maintenance">
+                <Button className="bg-emerald-600 hover:bg-emerald-700">View Maintenance</Button>
+              </Link>
+              <Link href="/finance/fleet-costs">
+                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">Register Fleet Cost</Button>
+              </Link>
             </div>
           </CardContent>
         </Card>

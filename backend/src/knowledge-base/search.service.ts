@@ -38,10 +38,6 @@ export class SearchService {
     const [articles, total] = await Promise.all([
       this.prisma.article.findMany({
         where,
-        include: {
-          author: { select: { id: true, firstName: true, lastName: true } },
-          category: { select: { id: true, name: true } }
-        },
         orderBy: { viewCount: 'desc' },
         skip,
         take: limit
@@ -59,8 +55,6 @@ export class SearchService {
         id: article.id,
         title: article.title,
         excerpt: article.excerpt || article.content.substring(0, 200) + '...',
-        author: `${article.author.firstName} ${article.author.lastName}`,
-        category: article.category?.name || 'Uncategorized',
         viewCount: article.viewCount,
         likeCount: article.likeCount,
         createdAt: article.createdAt,
@@ -136,9 +130,7 @@ export class SearchService {
       where.content = { contains: searchQuery.content }
     }
 
-    if (searchQuery.authorId) {
-      where.authorId = searchQuery.authorId
-    }
+    // authorId filter removed due to schema changes (no author relation)
 
     if (searchQuery.categoryIds && searchQuery.categoryIds.length > 0) {
       where.categoryId = { in: searchQuery.categoryIds }
@@ -181,10 +173,6 @@ export class SearchService {
     const [articles, total] = await Promise.all([
       this.prisma.article.findMany({
         where,
-        include: {
-          author: { select: { id: true, firstName: true, lastName: true } },
-          category: { select: { id: true, name: true } }
-        },
         orderBy,
         skip,
         take: limit
@@ -197,8 +185,6 @@ export class SearchService {
         id: article.id,
         title: article.title,
         excerpt: article.excerpt || article.content.substring(0, 200) + '...',
-        author: `${article.author.firstName} ${article.author.lastName}`,
-        category: article.category?.name || 'Uncategorized',
         viewCount: article.viewCount,
         likeCount: article.likeCount,
         createdAt: article.createdAt,

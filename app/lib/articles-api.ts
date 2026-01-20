@@ -1,4 +1,5 @@
 import { apiGet, apiPatch, apiPost } from "@/app/lib/api"
+import { apiDelete } from "@/app/lib/api"
 
 export type ArticleStatus = "DRAFT" | "REVIEW" | "PUBLISHED"
 export type Language = "EN" | "AM" | "OR" | "TI" | "SO" | "SI" | "WO"
@@ -32,6 +33,27 @@ export interface ArticlesPage {
   }
 }
 
+export interface ArticleComment {
+  id: string
+  content: string
+  createdAt: string
+  updatedAt: string
+  author: {
+    id: string
+    firstName: string
+    lastName: string
+    role: string
+  }
+}
+
+export interface ArticleFeedback {
+  id: string
+  articleId: string
+  userId: string
+  isLike: boolean
+  createdAt: string
+}
+
 export const articlesApi = {
   // GET /api/v1/knowledge-base/articles
   list: (params?: {
@@ -61,6 +83,22 @@ export const articlesApi = {
   // PATCH /api/v1/knowledge-base/articles/:id
   update: (id: string, dto: Partial<{ title: string; content: string; status: ArticleStatus; language: Language; expiresAt?: string | null }>) =>
     apiPatch<ArticleSummary>(`/knowledge-base/articles/${id}`, dto),
+
+  // POST /api/v1/knowledge-base/articles/:id/feedback
+  addFeedback: (id: string, isLike: boolean) =>
+    apiPost<ArticleFeedback>(`/knowledge-base/articles/${id}/feedback`, { isLike }),
+
+  // POST /api/v1/knowledge-base/articles/:id/comments
+  addComment: (id: string, content: string) =>
+    apiPost<ArticleComment>(`/knowledge-base/articles/${id}/comments`, { content }),
+
+  // DELETE /api/v1/knowledge-base/articles/:id/comments/:commentId
+  deleteComment: (id: string, commentId: string) =>
+    apiDelete<{ success: boolean }>(`/knowledge-base/articles/${id}/comments/${commentId}`),
+
+  // PATCH /api/v1/knowledge-base/articles/:id/comments/:commentId/hide
+  hideComment: (id: string, commentId: string) =>
+    apiPatch<ArticleComment>(`/knowledge-base/articles/${id}/comments/${commentId}/hide`, {}),
 
   // For create, prefer using multipart (ArticleForm already does direct fetch)
   // This is a convenience JSON create for simple cases without files

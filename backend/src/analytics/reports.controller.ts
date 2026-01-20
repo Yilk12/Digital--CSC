@@ -67,7 +67,7 @@ export class ReportsController {
   }
 
   @ApiOperation({ summary: "Generate user report" })
-  @Roles(UserRole.ADMIN, UserRole.GENERAL_DIRECTOR, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Commissioner, UserRole.Department_Head)
   @Get("users")
   async generateUserReport(
     @Query('startDate') startDate: string,
@@ -87,7 +87,7 @@ export class ReportsController {
   }
 
   @ApiOperation({ summary: "Generate performance report" })
-  @Roles(UserRole.ADMIN, UserRole.GENERAL_DIRECTOR, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Commissioner, UserRole.Department_Head)
   @Get("performance")
   async generatePerformanceReport(
     @Query('startDate') startDate: string,

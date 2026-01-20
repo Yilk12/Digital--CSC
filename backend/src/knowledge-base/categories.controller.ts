@@ -17,7 +17,7 @@ export class CategoriesController {
   @ApiResponse({ status: 201, description: "Category created successfully" })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Post()
   create(createCategoryDto: CreateCategoryDto) {
     return this.categoriesService.create(createCategoryDto)
@@ -45,7 +45,7 @@ export class CategoriesController {
   @ApiOperation({ summary: "Update category" })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Patch(":id")
   update(@Param('id') id: string, updateCategoryDto: UpdateCategoryDto) {
     return this.categoriesService.update(id, updateCategoryDto)
@@ -54,7 +54,7 @@ export class CategoriesController {
   @ApiOperation({ summary: 'Delete category' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.categoriesService.remove(id);

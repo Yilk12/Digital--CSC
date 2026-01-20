@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { decodeJwt } from "@/app/lib/auth";
 import { addVoicebox, listVoicebox } from "@/app/lib/voiceboxStore";
-import type { VoiceboxEntry } from "@/types/voicebox";
+import type { VoiceboxEntry } from "@/backend/types/voicebox";
 
 function getRolesFromToken(token: string | null): string[] {
   if (!token) return [];
@@ -72,6 +72,7 @@ export async function POST(req: Request) {
       staffInvolved: body.staffInvolved,
       attachments: Array.isArray(body.attachments) ? body.attachments : [],
       desiredAction: body.desiredAction,
+      receiver: body.receiver,
       submitterId: body.submitterId,
       fullName: body.fullName,
       contact: body.contact,

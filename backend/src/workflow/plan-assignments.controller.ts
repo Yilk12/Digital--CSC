@@ -14,7 +14,7 @@ export class PlanAssignmentsController {
   constructor(private readonly workflow: WorkflowService) {}
 
   @ApiOperation({ summary: 'Distribute plan assignments' })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER, UserRole.GENERAL_DIRECTOR)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head, UserRole.Commissioner)
   @Post('distribute')
   distribute(@Body() body: { planId: string; toUsers: string[]; by: string; dueDate?: string; notes?: string }) {
     return this.workflow.distributePlanAssignments(body)

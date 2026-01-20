@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common"
 import { PrismaService } from "../prisma/prisma.service"
-import { TicketStatus, UserRole, ArticleStatus } from "@prisma/client"
+import { TicketStatus, UserRole, Prisma } from "@prisma/client"
 
 @Injectable()
 export class ReportsService {
@@ -110,20 +110,9 @@ export class ReportsService {
       },
     }
 
-    if (userRole === UserRole.SUPPORT_AGENT) {
-      where.authorId = userId
-    }
-
     const articles = await this.prisma.article.findMany({
       where,
       include: {
-        author: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
         category: true,
         tags: {
           include: {
@@ -149,8 +138,6 @@ export class ReportsService {
       createdAt: article.createdAt,
       publishedAt: article.publishedAt,
       expiresAt: article.expiresAt,
-      author: `${article.author.firstName} ${article.author.lastName}`,
-      authorEmail: article.author.email,
       category: article.category?.name,
       tags: article.tags.map((at) => at.tag.name).join(", "),
       viewCount: article.viewCount,
@@ -180,7 +167,18 @@ export class ReportsService {
   }
 
   async generateUserReport(startDate: Date, endDate: Date, format: "json" | "csv" = "json") {
-    const users = await this.prisma.user.findMany({
+    const users: Prisma.UserGetPayload<{
+      include: {
+        _count: {
+          select: {
+            createdTickets: true
+            assignedTickets: true
+            comments: true
+            articleComments: true
+          }
+        }
+      }
+    }>[] = await this.prisma.user.findMany({
       where: {
         createdAt: {
           gte: startDate,
@@ -192,14 +190,14 @@ export class ReportsService {
           select: {
             createdTickets: true,
             assignedTickets: true,
-            createdArticles: true,
-            ticketComments: true,
+            comments: true,
             articleComments: true,
           },
         },
       },
       orderBy: { createdAt: "desc" },
     })
+
 
     const reportData = users.map((user) => ({
       id: user.id,
@@ -208,19 +206,18 @@ export class ReportsService {
       email: user.email,
       role: user.role,
       userType: user.userType,
-      department: user.department,
+      department: user.departmentId,
       isActive: user.isActive,
       createdAt: user.createdAt,
       ticketsCreated: user._count.createdTickets,
       ticketsAssigned: user._count.assignedTickets,
-      articlesCreated: user._count.createdArticles,
-      ticketComments: user._count.ticketComments,
+      articlesCreated: 0,
+      ticketComments: user._count.comments,
       articleComments: user._count.articleComments,
       totalActivity:
         user._count.createdTickets +
         user._count.assignedTickets +
-        user._count.createdArticles +
-        user._count.ticketComments +
+        user._count.comments +
         user._count.articleComments,
     }))
 
@@ -263,28 +260,12 @@ export class ReportsService {
             slaDeadline: true,
           },
         },
-        createdArticles: {
-          where: {
-            createdAt: {
-              gte: startDate,
-              lte: endDate,
-            },
-          },
-          select: {
-            id: true,
-            status: true,
-            viewCount: true,
-            likeCount: true,
-          },
-        },
       },
     })
 
     const reportData = agents.map((agent) => {
       const tickets = agent.assignedTickets
-      const articles = agent.createdArticles
       const resolvedTickets = tickets.filter((t) => t.status === TicketStatus.RESOLVED)
-      const publishedArticles = articles.filter((a) => a.status === ArticleStatus.PUBLISHED)
 
       const avgResolutionTime =
         resolvedTickets.length > 0
@@ -309,20 +290,20 @@ export class ReportsService {
         id: agent.id,
         name: `${agent.firstName} ${agent.lastName}`,
         email: agent.email,
-        department: agent.department,
+        department: agent.departmentId,
         ticketsAssigned: tickets.length,
         ticketsResolved: resolvedTickets.length,
         resolutionRate: tickets.length > 0 ? (resolvedTickets.length / tickets.length) * 100 : 0,
         avgResolutionTime: Math.round(avgResolutionTime),
         slaCompliance: tickets.length > 0 ? (slaCompliant / tickets.length) * 100 : 0,
-        articlesCreated: articles.length,
-        articlesPublished: publishedArticles.length,
-        totalArticleViews: articles.reduce((sum, a) => sum + a.viewCount, 0),
-        totalArticleLikes: articles.reduce((sum, a) => sum + a.likeCount, 0),
+        articlesCreated: 0,
+        articlesPublished: 0,
+        totalArticleViews: 0,
+        totalArticleLikes: 0,
         performanceScore: this.calculatePerformanceScore({
           resolutionRate: tickets.length > 0 ? (resolvedTickets.length / tickets.length) * 100 : 0,
           slaCompliance: tickets.length > 0 ? (slaCompliant / tickets.length) * 100 : 0,
-          articlesPublished: publishedArticles.length,
+          articlesPublished: 0,
         }),
       }
     })

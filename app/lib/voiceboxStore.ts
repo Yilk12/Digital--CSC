@@ -1,4 +1,4 @@
-import type { VoiceboxEntry } from "@/types/voicebox";
+import type { VoiceboxEntry } from "@/backend/types/voicebox";
 
 // Simple in-memory store. Data will reset on server restart.
 const store: { items: VoiceboxEntry[] } = { items: [] };

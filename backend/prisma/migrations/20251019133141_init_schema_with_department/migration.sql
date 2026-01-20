@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'AGENT', 'SUPPORT_AGENT', 'STAFF_MANAGER', 'GENERAL_DIRECTOR', 'END_USER');
+CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'SUPPORT_AGENT', 'Department_Head', 'Commissioner', 'END_USER', 'Driver', 'Maintenace_Team', 'Finance_Department', 'Announcement_Creator', 'Fleet_Manager');
 
 -- CreateEnum
 CREATE TYPE "UserType" AS ENUM ('INTERNAL', 'EXTERNAL');
@@ -17,19 +17,25 @@ CREATE TYPE "TicketCategory" AS ENUM ('GENERAL', 'IT', 'HR', 'FINANCE', 'INCIDEN
 CREATE TYPE "SubmissionType" AS ENUM ('COMPLAINT', 'SUGGESTION', 'REQUEST', 'INCIDENT');
 
 -- CreateEnum
-CREATE TYPE "SubmissionStatus" AS ENUM ('SUBMITTED', 'ACCEPTED', 'REJECTED', 'ESCALATED', 'CLOSED');
+CREATE TYPE "SubmissionStatus" AS ENUM ('SUBMITTED', 'ACCEPTED', 'REJECTED', 'ESCALATED', 'MORE_INFO_REQUESTED', 'CLOSED');
 
 -- CreateEnum
 CREATE TYPE "ArticleStatus" AS ENUM ('DRAFT', 'REVIEW', 'PUBLISHED', 'ARCHIVED');
 
 -- CreateEnum
-CREATE TYPE "Language" AS ENUM ('EN', 'AM');
+CREATE TYPE "Language" AS ENUM ('EN', 'AM', 'OR', 'TI', 'SO', 'SI', 'WO');
 
 -- CreateEnum
 CREATE TYPE "ReportStatus" AS ENUM ('PENDING', 'RESOLVED', 'REJECTED');
 
 -- CreateEnum
 CREATE TYPE "ReportTargetType" AS ENUM ('USER', 'ARTICLE', 'TICKET', 'POST', 'COMMENT');
+
+-- CreateEnum
+CREATE TYPE "ScheduleStatus" AS ENUM ('ACTIVE', 'CANCELLED', 'COMPLETED', 'FAILED');
+
+-- CreateEnum
+CREATE TYPE "ReportFrequency" AS ENUM ('DAILY', 'WEEKLY', 'MONTHLY');
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -47,6 +53,34 @@ CREATE TABLE "User" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Module" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+
+    CONSTRAINT "Module_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Permission" (
+    "id" SERIAL NOT NULL,
+    "action" TEXT NOT NULL,
+
+    CONSTRAINT "Permission_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "UserPermission" (
+    "id" SERIAL NOT NULL,
+    "userId" UUID NOT NULL,
+    "moduleId" INTEGER NOT NULL,
+    "permissionId" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "UserPermission_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -70,9 +104,9 @@ CREATE TABLE "Ticket" (
     "status" "TicketStatus" NOT NULL DEFAULT 'OPEN',
     "priority" "TicketPriority" NOT NULL,
     "category" "TicketCategory" NOT NULL,
-    "createdById" TEXT NOT NULL,
-    "assigneeId" TEXT,
-    "departmentId" TEXT,
+    "createdById" UUID NOT NULL,
+    "assigneeId" UUID,
+    "departmentId" UUID,
     "slaDeadline" TIMESTAMP(3),
     "resolvedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -86,7 +120,7 @@ CREATE TABLE "Category" (
     "id" UUID NOT NULL,
     "name" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "parentId" TEXT,
+    "parentId" UUID,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -96,8 +130,8 @@ CREATE TABLE "Category" (
 -- CreateTable
 CREATE TABLE "TicketComment" (
     "id" UUID NOT NULL,
-    "ticketId" TEXT NOT NULL,
-    "authorId" TEXT NOT NULL,
+    "ticketId" UUID NOT NULL,
+    "authorId" UUID NOT NULL,
     "content" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -107,7 +141,7 @@ CREATE TABLE "TicketComment" (
 -- CreateTable
 CREATE TABLE "TicketAttachment" (
     "id" UUID NOT NULL,
-    "ticketId" TEXT NOT NULL,
+    "ticketId" UUID NOT NULL,
     "filename" TEXT NOT NULL,
     "filepath" TEXT NOT NULL,
     "mimetype" TEXT NOT NULL,
@@ -123,8 +157,8 @@ CREATE TABLE "AuditLog" (
     "action" TEXT NOT NULL,
     "entity" TEXT NOT NULL,
     "entityId" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "ticketId" TEXT,
+    "userId" UUID NOT NULL,
+    "ticketId" UUID,
     "oldValues" JSONB,
     "newValues" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -136,8 +170,8 @@ CREATE TABLE "AuditLog" (
 CREATE TABLE "PlanAssignment" (
     "id" UUID NOT NULL,
     "planId" TEXT NOT NULL,
-    "fromUserId" TEXT NOT NULL,
-    "toUserId" TEXT NOT NULL,
+    "fromUserId" UUID NOT NULL,
+    "toUserId" UUID NOT NULL,
     "level" TEXT NOT NULL,
     "notes" TEXT,
     "dueDate" TIMESTAMP(3),
@@ -150,7 +184,7 @@ CREATE TABLE "PlanAssignment" (
 CREATE TABLE "PlanHistory" (
     "id" UUID NOT NULL,
     "planId" TEXT NOT NULL,
-    "byUserId" TEXT NOT NULL,
+    "byUserId" UUID NOT NULL,
     "action" TEXT NOT NULL,
     "comments" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -171,8 +205,8 @@ CREATE TABLE "Article" (
     "viewCount" INTEGER NOT NULL DEFAULT 0,
     "likeCount" INTEGER NOT NULL DEFAULT 0,
     "dislikeCount" INTEGER NOT NULL DEFAULT 0,
-    "authorId" TEXT NOT NULL,
-    "categoryId" TEXT,
+    "authorId" UUID NOT NULL,
+    "categoryId" UUID,
     "publishedAt" TIMESTAMP(3),
     "expiresAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -193,8 +227,8 @@ CREATE TABLE "Tag" (
 
 -- CreateTable
 CREATE TABLE "ArticleTag" (
-    "articleId" TEXT NOT NULL,
-    "tagId" TEXT NOT NULL,
+    "articleId" UUID NOT NULL,
+    "tagId" UUID NOT NULL,
 
     CONSTRAINT "ArticleTag_pkey" PRIMARY KEY ("articleId","tagId")
 );
@@ -202,7 +236,7 @@ CREATE TABLE "ArticleTag" (
 -- CreateTable
 CREATE TABLE "ArticleAttachment" (
     "id" UUID NOT NULL,
-    "articleId" TEXT NOT NULL,
+    "articleId" UUID NOT NULL,
     "filename" TEXT NOT NULL,
     "filepath" TEXT NOT NULL,
     "mimetype" TEXT NOT NULL,
@@ -215,8 +249,8 @@ CREATE TABLE "ArticleAttachment" (
 -- CreateTable
 CREATE TABLE "ArticleComment" (
     "id" UUID NOT NULL,
-    "articleId" TEXT NOT NULL,
-    "authorId" TEXT NOT NULL,
+    "articleId" UUID NOT NULL,
+    "authorId" UUID NOT NULL,
     "content" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -226,8 +260,8 @@ CREATE TABLE "ArticleComment" (
 -- CreateTable
 CREATE TABLE "ArticleFeedback" (
     "id" UUID NOT NULL,
-    "articleId" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
+    "articleId" UUID NOT NULL,
+    "userId" UUID NOT NULL,
     "isLike" BOOLEAN NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -237,7 +271,7 @@ CREATE TABLE "ArticleFeedback" (
 -- CreateTable
 CREATE TABLE "Submission" (
     "id" UUID NOT NULL,
-    "userId" TEXT,
+    "userId" UUID,
     "submitterName" TEXT,
     "submitterDepartment" TEXT,
     "contactEmail" TEXT,
@@ -249,8 +283,8 @@ CREATE TABLE "Submission" (
     "status" "SubmissionStatus" NOT NULL DEFAULT 'SUBMITTED',
     "decisionSummary" TEXT,
     "decisionAt" TIMESTAMP(3),
-    "gmReviewerId" TEXT,
-    "assignedDepartmentId" TEXT,
+    "gmReviewerId" UUID,
+    "assignedDepartmentId" UUID,
     "escalatedTo" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -261,7 +295,7 @@ CREATE TABLE "Submission" (
 -- CreateTable
 CREATE TABLE "AbuseReport" (
     "id" UUID NOT NULL,
-    "reporterId" TEXT NOT NULL,
+    "reporterId" UUID NOT NULL,
     "targetType" "ReportTargetType" NOT NULL,
     "targetId" TEXT NOT NULL,
     "reason" TEXT NOT NULL,
@@ -270,6 +304,36 @@ CREATE TABLE "AbuseReport" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "AbuseReport_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Report" (
+    "id" UUID NOT NULL,
+    "type" TEXT NOT NULL,
+    "format" TEXT NOT NULL,
+    "data" JSONB,
+    "filename" TEXT,
+    "mimeType" TEXT,
+    "generatedById" UUID NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Report_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ReportSchedule" (
+    "id" UUID NOT NULL,
+    "reportType" TEXT NOT NULL,
+    "config" JSONB,
+    "frequency" "ReportFrequency" NOT NULL,
+    "recipients" TEXT[],
+    "scheduledById" UUID NOT NULL,
+    "nextRun" TIMESTAMP(3) NOT NULL,
+    "status" "ScheduleStatus" NOT NULL DEFAULT 'ACTIVE',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ReportSchedule_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -288,7 +352,7 @@ CREATE TABLE "Vehicle" (
 -- CreateTable
 CREATE TABLE "FleetRequest" (
     "id" SERIAL NOT NULL,
-    "requestorId" TEXT NOT NULL,
+    "requestorId" UUID NOT NULL,
     "purpose" TEXT NOT NULL,
     "tripType" TEXT,
     "destination" TEXT,
@@ -302,8 +366,8 @@ CREATE TABLE "FleetRequest" (
 -- CreateTable
 CREATE TABLE "Trip" (
     "id" UUID NOT NULL,
-    "vehicleId" TEXT NOT NULL,
-    "driverId" TEXT NOT NULL,
+    "vehicleId" UUID NOT NULL,
+    "driverId" UUID NOT NULL,
     "startAt" TIMESTAMP(3) NOT NULL,
     "origin" TEXT,
     "destination" TEXT,
@@ -329,6 +393,15 @@ CREATE TABLE "SystemSetting" (
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Module_name_key" ON "Module"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Permission_action_key" ON "Permission"("action");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "UserPermission_userId_moduleId_permissionId_key" ON "UserPermission"("userId", "moduleId", "permissionId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Category_name_key" ON "Category"("name");
 
 -- CreateIndex
@@ -342,6 +415,15 @@ CREATE UNIQUE INDEX "Vehicle_plate_key" ON "Vehicle"("plate");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "SystemSetting_key_key" ON "SystemSetting"("key");
+
+-- AddForeignKey
+ALTER TABLE "UserPermission" ADD CONSTRAINT "UserPermission_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UserPermission" ADD CONSTRAINT "UserPermission_moduleId_fkey" FOREIGN KEY ("moduleId") REFERENCES "Module"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UserPermission" ADD CONSTRAINT "UserPermission_permissionId_fkey" FOREIGN KEY ("permissionId") REFERENCES "Permission"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -417,6 +499,12 @@ ALTER TABLE "Submission" ADD CONSTRAINT "Submission_assignedDepartmentId_fkey" F
 
 -- AddForeignKey
 ALTER TABLE "AbuseReport" ADD CONSTRAINT "AbuseReport_reporterId_fkey" FOREIGN KEY ("reporterId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Report" ADD CONSTRAINT "Report_generatedById_fkey" FOREIGN KEY ("generatedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReportSchedule" ADD CONSTRAINT "ReportSchedule_scheduledById_fkey" FOREIGN KEY ("scheduledById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "FleetRequest" ADD CONSTRAINT "FleetRequest_requestorId_fkey" FOREIGN KEY ("requestorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

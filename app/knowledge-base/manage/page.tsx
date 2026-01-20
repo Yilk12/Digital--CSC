@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
+import { useLocalization } from "@/app/hooks/use-localization"
 import { articlesApi, type ArticlesPage, type ArticleStatus } from "@/app/lib/articles-api"
 import { API_BASE_URL } from "@/app/lib/api"
 
@@ -14,6 +15,7 @@ function getAuthHeader(): Record<string, string> {
 }
 
 export default function ManageKnowledgeBasePage() {
+  const { t } = useLocalization()
   const [page, setPage] = useState(1)
   const [limit] = useState(10)
   const [status, setStatus] = useState<"ALL" | ArticleStatus>("ALL")
@@ -76,7 +78,7 @@ export default function ManageKnowledgeBasePage() {
     setError(null)
     try {
       const headers: HeadersInit = { "Content-Type": "application/json", ...getAuthHeader() }
-      const res = await fetch(`${API_BASE_URL}/knowledge-base/articles/${id}`, { method: "DELETE", headers, credentials: "include" })
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/knowledge-base/articles/${id}`, { method: "DELETE", headers, credentials: "include" })
       if (!res.ok) throw new Error(`DELETE failed: ${res.status}`)
       await load()
     } catch (e: any) {
@@ -94,51 +96,51 @@ export default function ManageKnowledgeBasePage() {
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Knowledge Base Management</h1>
-        <p className="text-gray-600">Admins can create, manage, publish, and share knowledge articles.</p>
+        <h1 className="text-2xl font-semibold">{t("kb.manage.header")}</h1>
+        <p className="text-gray-600">{t("kb.manage.subtitle")}</p>
       </div>
 
       <section className="space-y-3 p-4 border rounded">
-        <h2 className="font-medium">Create New Article</h2>
+        <h2 className="font-medium">{t("kb.manage.create_section")}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <input className="border rounded p-2" placeholder="Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
+          <input className="border rounded p-2" placeholder={t("kb.manage.title_ph")} value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
           <select className="border rounded p-2" value={newStatus} onChange={(e) => setNewStatus(e.target.value as ArticleStatus)}>
-            <option value="DRAFT">Draft</option>
-            <option value="REVIEW">Review</option>
-            <option value="PUBLISHED">Published</option>
+            <option value="DRAFT">{t("kb.status.draft")}</option>
+            <option value="REVIEW">{t("kb.status.review")}</option>
+            <option value="PUBLISHED">{t("kb.status.published")}</option>
           </select>
           <button className="px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-50" disabled={creating || !newTitle.trim() || !newContent.trim()} onClick={createSimpleArticle}>
-            {creating ? "Creating..." : "Create Article"}
+            {creating ? t("kb.manage.creating") : t("kb.manage.create")}
           </button>
         </div>
-        <textarea className="w-full border rounded p-2" rows={5} placeholder="Content" value={newContent} onChange={(e) => setNewContent(e.target.value)} />
+        <textarea className="w-full border rounded p-2" rows={5} placeholder={t("kb.manage.content_ph")} value={newContent} onChange={(e) => setNewContent(e.target.value)} />
       </section>
 
       <section className="flex items-center gap-2">
-        <input className="border rounded p-2 flex-1" placeholder="Search title/content" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input className="border rounded p-2 flex-1" placeholder={t("kb.manage.search_ph")} value={search} onChange={(e) => setSearch(e.target.value)} />
         <select className="border rounded p-2" value={status} onChange={(e) => setStatus(e.target.value as any)}>
-          <option value="ALL">All</option>
-          <option value="DRAFT">Draft</option>
-          <option value="REVIEW">Review</option>
-          <option value="PUBLISHED">Published</option>
+          <option value="ALL">{t("kb.manage.status_all")}</option>
+          <option value="DRAFT">{t("kb.status.draft")}</option>
+          <option value="REVIEW">{t("kb.status.review")}</option>
+          <option value="PUBLISHED">{t("kb.status.published")}</option>
         </select>
-        <button className="px-3 py-2 bg-gray-100 rounded" onClick={() => { setPage(1); load(); }}>Filter</button>
+        <button className="px-3 py-2 bg-gray-100 rounded" onClick={() => { setPage(1); load(); }}>{t("kb.manage.filter")}</button>
       </section>
 
       {error && <div className="p-3 rounded bg-red-50 text-red-700 border border-red-200">{error}</div>}
 
       <section className="border rounded">
         <div className="grid grid-cols-12 gap-2 p-3 font-medium border-b bg-gray-50">
-          <div className="col-span-4">Title</div>
-          <div className="col-span-2">Status</div>
-          <div className="col-span-2">Author</div>
-          <div className="col-span-2">Created</div>
-          <div className="col-span-2">Actions</div>
+          <div className="col-span-4">{t("kb.table.title")}</div>
+          <div className="col-span-2">{t("kb.table.status")}</div>
+          <div className="col-span-2">{t("kb.table.author")}</div>
+          <div className="col-span-2">{t("kb.table.created")}</div>
+          <div className="col-span-2">{t("kb.table.actions")}</div>
         </div>
         {loading ? (
-          <div className="p-4">Loading...</div>
+          <div className="p-4">{t("kb.loading")}</div>
         ) : !data || data.articles.length === 0 ? (
-          <div className="p-4 text-gray-600">No articles found.</div>
+          <div className="p-4 text-gray-600">{t("kb.empty")}</div>
         ) : (
           data.articles.map((a) => (
             <div key={a.id} className="grid grid-cols-12 gap-2 p-3 border-b items-center">
@@ -150,12 +152,12 @@ export default function ManageKnowledgeBasePage() {
               <div className="col-span-2 text-sm text-gray-500">{new Date(a.createdAt).toLocaleDateString()}</div>
               <div className="col-span-2 flex gap-2">
                 {a.status !== "PUBLISHED" ? (
-                  <button className="px-2 py-1 text-xs bg-green-600 text-white rounded" onClick={() => updateStatus(a.id, "PUBLISHED")}>Publish</button>
+                  <button className="px-2 py-1 text-xs bg-green-600 text-white rounded" onClick={() => updateStatus(a.id, "PUBLISHED")}>{t("kb.publish")}</button>
                 ) : (
-                  <button className="px-2 py-1 text-xs bg-yellow-600 text-white rounded" onClick={() => updateStatus(a.id, "DRAFT")}>Unpublish</button>
+                  <button className="px-2 py-1 text-xs bg-yellow-600 text-white rounded" onClick={() => updateStatus(a.id, "DRAFT")}>{t("kb.unpublish")}</button>
                 )}
-                <button className="px-2 py-1 text-xs bg-gray-200 rounded" onClick={() => copyShareLink(a.id)}>Copy Link</button>
-                <button className="px-2 py-1 text-xs bg-red-600 text-white rounded" onClick={() => deleteArticle(a.id)}>Delete</button>
+                <button className="px-2 py-1 text-xs bg-gray-200 rounded" onClick={() => copyShareLink(a.id)}>{t("kb.copy_link")}</button>
+                <button className="px-2 py-1 text-xs bg-red-600 text-white rounded" onClick={() => deleteArticle(a.id)}>{t("kb.delete")}</button>
               </div>
             </div>
           ))

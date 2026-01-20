@@ -30,7 +30,8 @@ export default function FeedbackPage() {
   const [roleAuto, setRoleAuto] = useState(true)
   const [role, setRole] = useState<UiRole | "">("")
   const [departmentId, setDepartmentId] = useState("")
-  const [type, setType] = useState<FeedbackType>("TICKET")
+  const [category, setCategory] = useState<string>("Complaint")
+  const [reportType, setReportType] = useState<"ANONYMOUS" | "IDENTIFIED" | "THIRD_PARTY" | "">("")
   const [rating, setRating] = useState<number | "">("")
   const [helpful, setHelpful] = useState<boolean | "">("")
   const [comments, setComments] = useState("")
@@ -46,6 +47,11 @@ export default function FeedbackPage() {
 
   const [strategicImpact, setStrategicImpact] = useState("")
   const [escalationPriority, setEscalationPriority] = useState<EscalationPriority | "">("")
+
+  // Simple feedback stats for commissioner/authorized users
+  const [totalFeedback, setTotalFeedback] = useState<number | null>(null)
+  const [complaintsCount, setComplaintsCount] = useState<number | null>(null)
+  const [suggestionsCount, setSuggestionsCount] = useState<number | null>(null)
 
   const effectiveBackendRole = useMemo(() => {
     if (roleAuto) return undefined // backend will use req.user.role if authenticated
@@ -72,6 +78,33 @@ export default function FeedbackPage() {
     }
   }, [])
 
+  // Load basic feedback stats (if user is authorized, e.g. Commissioner/Admin)
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadFeedbackStats() {
+      try {
+        const items = await apiGet<any[]>("/feedback")
+        if (cancelled || !Array.isArray(items)) return
+
+        const total = items.length
+        const complaints = items.filter((f) => f?.category === "Complaint").length
+        const suggestions = items.filter((f) => f?.category === "Suggestion").length
+
+        setTotalFeedback(total)
+        setComplaintsCount(complaints)
+        setSuggestionsCount(suggestions)
+      } catch {
+        // Silently ignore if unauthorized; page still works as a submission form
+      }
+    }
+
+    loadFeedbackStats()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -83,7 +116,7 @@ export default function FeedbackPage() {
     }
 
     const payload: any = {
-      type,
+      type: "GENERAL",
       departmentId,
       comments: comments || undefined,
       anonymous,
@@ -97,7 +130,14 @@ export default function FeedbackPage() {
     if (attachmentPath.trim()) payload.attachmentPath = attachmentPath.trim()
 
     // role override (if not auto)
-    if (effectiveBackendRole) payload.role = effectiveBackendRole
+    if (effectiveBackendRole) {
+      payload.role = effectiveBackendRole
+    } else if (roleAuto) {
+      // When using auto-detect, the backend createFeedback endpoint still
+      // requires a role in the DTO because it does not use JWT auth.
+      // Default to END_USER, which matches the backend UserRole enum.
+      payload.role = "END_USER"
+    }
 
     // role-specific fields
     if (!roleAuto && role === "USER") {
@@ -112,6 +152,10 @@ export default function FeedbackPage() {
       if (strategicImpact.trim()) payload.strategicImpact = strategicImpact.trim()
       if (escalationPriority !== "") payload.escalationPriority = escalationPriority
     }
+
+    // NOTE: For now, category/reportType are used only in the UI and not sent
+    // to the backend, because CreateFeedbackDto does not define these fields
+    // and the validation pipeline rejects unknown properties.
 
     // Entity linkage (optional via comments or future UI)
     // payload.articleId or payload.ticketId can be added if you wire selections
@@ -131,6 +175,7 @@ export default function FeedbackPage() {
       setProcessTrainingImprovements("")
       setStrategicImpact("")
       setEscalationPriority("")
+      setReportType("")
     } catch (e: any) {
       setError(e?.message || "Failed to submit feedback")
     } finally {
@@ -140,8 +185,52 @@ export default function FeedbackPage() {
 
   return (
     <div className="max-w-3xl w-full mx-auto p-4">
-      <h1 className="text-2xl font-semibold mb-2">Submit Feedback</h1>
+      <h1 className="text-2xl font-semibold mb-2">ግብረ መልስ ይላኩ</h1>
       <p className="text-gray-600 mb-6">Help us improve by sharing your experience. Your feedback is routed to the right department and visible only to department heads, general managers, and administrators.</p>
+
+      {/* Summary cards (shown when stats are available) */}
+      {(typeof totalFeedback === "number" || typeof complaintsCount === "number" || typeof suggestionsCount === "number") && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          {typeof totalFeedback === "number" && totalFeedback > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border flex items-center justify-between px-6 py-4 relative overflow-hidden">
+              <div className="absolute inset-y-0 left-0 w-1 bg-purple-500" />
+              <div className="relative flex flex-col">
+                <span className="text-sm font-semibold text-amber-500 mb-1">ጠቅላላ የተመዘገቡ ግብረ መልሶች</span>
+                <span className="text-3xl font-bold text-gray-800">{totalFeedback}</span>
+              </div>
+              <div className="relative flex items-center justify-center w-10 h-10 rounded-full bg-purple-50 text-purple-500">
+                <span className="text-lg">📋</span>
+              </div>
+            </div>
+          )}
+
+          {typeof complaintsCount === "number" && complaintsCount > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border flex items-center justify-between px-6 py-4 relative overflow-hidden">
+              <div className="absolute inset-y-0 left-0 w-1 bg-red-500" />
+              <div className="relative flex flex-col">
+                <span className="text-sm font-semibold text-amber-500 mb-1">የቅሬታ ግብረ መልሶች</span>
+                <span className="text-3xl font-bold text-gray-800">{complaintsCount}</span>
+              </div>
+              <div className="relative flex items-center justify-center w-10 h-10 rounded-full bg-red-50 text-red-500">
+                <span className="text-lg">📋</span>
+              </div>
+            </div>
+          )}
+
+          {typeof suggestionsCount === "number" && suggestionsCount > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border flex items-center justify-between px-6 py-4 relative overflow-hidden">
+              <div className="absolute inset-y-0 left-0 w-1 bg-blue-500" />
+              <div className="relative flex flex-col">
+                <span className="text-sm font-semibold text-amber-500 mb-1">የሃሳብ አስተያየቶች</span>
+                <span className="text-3xl font-bold text-gray-800">{suggestionsCount}</span>
+              </div>
+              <div className="relative flex items-center justify-center w-10 h-10 rounded-full bg-blue-50 text-blue-500">
+                <span className="text-lg">📋</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <form onSubmit={onSubmit} className="space-y-6">
         {/* Role selection */}
@@ -155,17 +244,17 @@ export default function FeedbackPage() {
           </div>
           {!roleAuto && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-              <label className="inline-flex items-center gap-2 p-2 border rounded">
+              <label className="inline-flex items-center gap-2 p-2 border rounded w-full sm:w-auto">
                 <input type="radio" name="role" checked={role === "USER"} onChange={() => setRole("USER")} />
                 <span>User</span>
               </label>
               <label className="inline-flex items-center gap-2 p-2 border rounded">
                 <input type="radio" name="role" checked={role === "DEPARTMENT_HEAD"} onChange={() => setRole("DEPARTMENT_HEAD")} />
-                <span>Department Head</span>
+                <span>ዋና የስራ ክፍል</span>
               </label>
               <label className="inline-flex items-center gap-2 p-2 border rounded">
                 <input type="radio" name="role" checked={role === "GENERAL_MANAGER"} onChange={() => setRole("GENERAL_MANAGER")} />
-                <span>General Manager</span>
+                <span>ኮሚሽነር</span>
               </label>
             </div>
           )}
@@ -173,7 +262,7 @@ export default function FeedbackPage() {
 
         {/* Department */}
         <section className="space-y-2">
-          <h2 className="font-medium">Department</h2>
+          <h2 className="font-medium">ዋና የስራ ክፍል</h2>
           <select
             className="w-full border rounded p-2 bg-white"
             value={departmentId}
@@ -181,7 +270,7 @@ export default function FeedbackPage() {
             required
           >
             <option value="" disabled>
-              Select a department
+              ዋና የስራ ክፍል ይምረጡ
             </option>
             {departments.map((d) => (
               <option key={d.id} value={d.id}>
@@ -194,15 +283,56 @@ export default function FeedbackPage() {
         {/* Feedback details */}
         <section className="space-y-4">
           <div>
-            <h2 className="font-medium">Feedback Type</h2>
-            <div className="flex flex-wrap gap-3 mt-2">
-              {(["TICKET", "KB", "SERVICE"] as FeedbackType[]).map((t) => (
-                <label key={t} className="inline-flex items-center gap-2 p-2 border rounded">
-                  <input type="radio" name="type" checked={type === t} onChange={() => setType(t)} />
-                  <span>{t === "KB" ? "Knowledge Base" : t === "SERVICE" ? "Service/Process" : "Ticket"}</span>
-                </label>
-              ))}
-            </div>
+            <h2 className="font-medium">አይነት</h2>
+            <select
+              className="w-full border rounded p-2 bg-white mt-2"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option value="Suggestion">አስተያየት</option>
+              <option value="Complaint">ሌሎች ጥቆማዎች</option>
+              <option value="Sexual Assault">የፆታዊ ጥቃት ጥቆማ መስጫ</option>
+            </select>
+            {category === "Sexual Assault" && (
+              <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-blue-500 to-teal-400 text-white">
+                <h3 className="text-lg font-semibold mb-3">የፆታዊ ጥቃት ጥቆማዎን ይፃፉ</h3>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setReportType("ANONYMOUS")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                      reportType === "ANONYMOUS"
+                        ? "bg-white text-blue-600 border-white"
+                        : "bg-blue-600/70 hover:bg-blue-600 border-blue-100/60"
+                    }`}
+                  >
+                    አመልካች
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportType("IDENTIFIED")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                      reportType === "IDENTIFIED"
+                        ? "bg-white text-blue-600 border-white"
+                        : "bg-white/10 hover:bg-white/20 border-white/40"
+                    }`}
+                  >
+                    የተመዘገቡ ሪፖርቶች
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportType("THIRD_PARTY")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                      reportType === "THIRD_PARTY"
+                        ? "bg-white text-blue-600 border-white"
+                        : "bg-white/10 hover:bg-white/20 border-white/40"
+                    }`}
+                  >
+                    የሶስተኛ ወገን ሪፖርት 
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -217,8 +347,8 @@ export default function FeedbackPage() {
 
           <div>
             <h2 className="font-medium">Helpful?</h2>
-            <div className="flex gap-3 mt-2">
-              <label className="inline-flex items-center gap-2 p-2 border rounded">
+            <div className="flex flex-col sm:flex-row gap-3 mt-2">
+              <label className="inline-flex items-center gap-2 p-2 border rounded w-full sm:w-auto">
                 <input type="radio" name="helpful" checked={helpful === true} onChange={() => setHelpful(true)} />
                 <span>Yes</span>
               </label>
@@ -234,7 +364,7 @@ export default function FeedbackPage() {
           </div>
 
           <div>
-            <h2 className="font-medium">Comments</h2>
+            <h2 className="font-medium">ኮሜንትስ</h2>
             <textarea
               className="w-full border rounded p-2"
               placeholder="Share any details to help us improve"
@@ -313,10 +443,10 @@ export default function FeedbackPage() {
         {error && <div className="p-3 rounded bg-red-50 text-red-700 border border-red-200">{error}</div>}
         {success && <div className="p-3 rounded bg-green-50 text-green-700 border border-green-200">{success}</div>}
 
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-end gap-3 mt-4">
           <button
             type="submit"
-            className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
             disabled={loading}
           >
             {loading ? "Submitting..." : "Submit Feedback"}

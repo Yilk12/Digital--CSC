@@ -3,7 +3,19 @@ import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  abuseReport: any;
+  scorecard: any;
+  kPI: any;
+  kpiDataPoint: any;
+  objective: any;
+  conversation: any;
+  conversationParticipant: any;
+  message: any;
+  messageReadReceipt: any;
+  notification: any;
+  feedback: any;
+  searchQuery: any;
+  searchInteraction: any;
+  post: any;
   async onModuleInit() {
     await this.$connect();
   }

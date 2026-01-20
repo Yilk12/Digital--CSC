@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getTotals, setTotals } from "@/lib/fleet-store"
+import { getTotals, setTotals } from "@/backend/lib/fleet-store"
 
 export async function GET() {
   const totals = await getTotals()

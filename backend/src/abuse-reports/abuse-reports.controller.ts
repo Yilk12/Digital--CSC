@@ -52,7 +52,7 @@ export class AbuseReportsController {
   }
 
   @ApiOperation({ summary: 'List abuse reports (admin/staff_manager only)' })
-  @Roles('ADMIN', 'STAFF_MANAGER')
+  @Roles('ADMIN', 'Department_Head')
   @Get()
   async list(
     @Query('status') status?: ReportStatus,
@@ -63,7 +63,7 @@ export class AbuseReportsController {
   }
 
   @ApiOperation({ summary: 'Update abuse report status (admin/staff_manager only)' })
-  @Roles('ADMIN', 'STAFF_MANAGER')
+  @Roles('ADMIN', 'Department_Head')
   @Patch(':id')
   async updateStatus(@Param('id') id: string, @Body() dto: UpdateAbuseReportStatusDto, @Request() req) {
     const actorId = req.user.id || req.user.userId;

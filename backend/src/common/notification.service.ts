@@ -146,7 +146,7 @@ export class NotificationService {
   async notifyArticlePublished(articleId: string) {
     const article = await this.prisma.article.findUnique({
       where: { id: articleId },
-      include: { author: true, category: true },
+      include: { category: true },
     })
 
     if (!article) return
@@ -160,9 +160,7 @@ export class NotificationService {
     const message = `New article "${article.title}" published in ${article.category?.name || "General"}`
 
     for (const user of users) {
-      if (user.id !== article.authorId) {
-        await this.createNotification(user.id, "article.published.title", message, "ARTICLE_PUBLISHED")
-      }
+      await this.createNotification(user.id, "article.published.title", message, "ARTICLE_PUBLISHED")
     }
   }
 }

@@ -1,14 +1,15 @@
-import React from "react"
+ import React from "react"
+import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Playfair_Display } from "next/font/google"
 import "./globals.css"
-import Footer from "@/components/footer"
-import AppHeader from "@/components/app-header"
-import SidebarContainer from "@/components/sidebar/sidebar-container"
-import { LocalizationProvider } from "@/hooks/use-localization"
-import { ToastProvider } from "@/components/toast-provider"
-import ToastView from "@/components/toast-view"
+import Footer from "@/app/components/footer"
+import AppHeader from "@/app/components/app-header"
+import SidebarContainer from "@/app/components/sidebar/sidebar-container"
+import { LocalizationProvider } from "@/app/hooks/use-localization"
+import { ToastProvider } from "@/app/components/toast-provider"
+import ToastView from "@/app/components/toast-view"
 import dynamic from "next/dynamic"
 
 const playfairDisplay = Playfair_Display({
@@ -18,9 +19,17 @@ const playfairDisplay = Playfair_Display({
 })
 
 const HEADER_HEIGHT = 84
+
+export const metadata: Metadata = {
+  title: "ICSDS",
+  icons: {
+    icon: "/gallery/FCSC.jpg",
+  },
+}
+
 // client-only dynamic import to avoid server-side rendering of the widget
 const FleetReportWidget = dynamic(
-  () => import("@/components/fleet-report-widget"),
+  () => import("@/app/components/fleet-report-widget"),
   { ssr: false }
 )
 
@@ -37,30 +46,14 @@ export default function RootLayout({
           <ToastProvider>
             <AppHeader />
             <div
-              style={{
-                display: "flex",
-                flex: 1,
-                minHeight: `calc(100vh - ${HEADER_HEIGHT}px)`,
-              }}
+              className="flex flex-1 min-h-[calc(100vh-84px)] flex-row"
             >
               <SidebarContainer />
               <main
-                style={{
-                  minHeight: `calc(100vh - ${HEADER_HEIGHT}px)`,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "flex-start",
-                  padding: 0,
-                  maxWidth: "1400px",
-                  width: "100%",
-                  background: "transparent",
-                  flex: 1,
-                }}
+                className="flex min-h-[calc(100vh-84px)] flex-1 flex-col items-center justify-start bg-transparent px-0 md:px-0 max-w-[1400px] w-full"
               >
                 {/* Fleet manager chart (client-side) */}
                 <FleetReportWidget />
-
                 {children}
               </main>
             </div>

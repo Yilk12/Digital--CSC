@@ -1,81 +1,86 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { getCurrentUserRoles } from "@/app/lib/auth"
+import { useRouter, usePathname } from "next/navigation"
+import { getCurrentUserRoles, decodeJwt } from "@/app/lib/auth"
+import { useEffect, useState } from "react"
+import { useLocalization } from "@/app/hooks/use-localization"
+
+interface UserRoles {
+  canDeptHead: boolean;
+  canManager: boolean;
+  isDriver: boolean;
+  isFinance: boolean;
+  isManager: boolean;
+  canSeeFleetCost: boolean;
+  isMaintenance: boolean;
+  isLoading: boolean;
+}
 
 export default function FleetHubPage() {
   const router = useRouter()
-  const roles = getCurrentUserRoles().map(r => r.toLowerCase())
-  const canDeptHead = roles.includes("department_head") || roles.includes("manager") || roles.includes("admin")
-  const canManager = roles.includes("fleet_manager") || roles.includes("manager") || roles.includes("admin")
-  const isDriver = roles.includes("driver")
+  const pathname = usePathname()
+  const { t } = useLocalization()
+  const [userRoles, setUserRoles] = useState<UserRoles>({
+    canDeptHead: false,
+    canManager: false,
+    isDriver: false,
+    isFinance: false,
+    isManager: false,
+    canSeeFleetCost: false,
+    isMaintenance: false,
+    isLoading: true
+  })
+
+  useEffect(() => {
+    // This code runs only on the client side
+    const roles = getCurrentUserRoles().map(r => r.toLowerCase())
+    const canDeptHead = roles.includes("department_head")
+    const canManager = roles.includes("fleet_manager") || roles.includes("manager")
+    const isDriver = roles.includes("driver")
+    const isFinance = roles.includes("finance")
+    const isManager = roles.includes("manager")
+    const canSeeFleetCost = isFinance || canManager
+    const isMaintenance = roles.includes("maintenance_team")
+
+    setUserRoles({
+      canDeptHead,
+      canManager,
+      isDriver,
+      isFinance,
+      isManager,
+      canSeeFleetCost,
+      isMaintenance,
+      isLoading: false
+    })
+  }, [])
+
+
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Fleet Management</h1>
-        <p className="text-sm text-muted-foreground">Role-based tools for requests, approvals, assignments, trips, and reporting.</p>
-      </div>
-
-      {/* Role selector */}
-      <div className="border rounded p-4">
-        <label className="block text-sm font-medium mb-2">Quick navigate by role</label>
-        <select
-          className="border rounded w-full p-2"
-          defaultValue=""
-          onChange={(e) => {
-            const v = e.target.value
-            if (!v) return
-            router.push(v)
-          }}
-        >
-          <option value="" disabled>Select a role</option>
-          <option value="/fleet/register">Vehicle Assignment Registration</option>
-          <option value="/fleet/manager">Fleet Manager</option>
-          <option value="/fleet/department-head">Department Head</option>
-          <option value="/fleet/driver">Drivers</option>
-          <option value="/fleet/user">Users (Employees/Departments)</option>
-          <option value="/fleet/maintenance">Maintenance Team</option>
-          <option value="/fleet/finance">Finance Department</option>
-          <option value="/fleet/commissioner">Commissioner</option>
-        </select>
+        <h1 className="text-2xl font-bold">{t("fleet.header")}</h1>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Link href="/fleet/register" className="border rounded p-4 hover:bg-muted">
-          <div className="font-semibold">Vehicle Assignment Registration</div>
-          <div className="text-sm text-muted-foreground">Register new vehicle assignments and departmental vehicles</div>
-        </Link>
-
-        <Link href="/fleet/request" className="border rounded p-4 hover:bg-muted">
-          <div className="font-semibold">Request Vehicle Assignment</div>
-          <div className="text-sm text-muted-foreground">Submit a request to the Fleet Manager for a vehicle</div>
-        </Link>
-
-        <Link href="/fleet/user" className="border rounded p-4 hover:bg-muted">
-          <div className="font-semibold">Employees</div>
-          <div className="text-sm text-muted-foreground">Request vehicles and track your requests</div>
-        </Link>
-
-        {canDeptHead && (
-          <Link href="/fleet/department-head" className="border rounded p-4 hover:bg-muted">
-            <div className="font-semibold">Department Head</div>
-            <div className="text-sm text-muted-foreground">Approve/Reject requests, view department usage</div>
+        {!userRoles.canDeptHead && (
+          <Link
+            href="/fleet/request"
+            className="border rounded p-4 bg-gradient-to-r from-green-100 to-pink-100 hover:from-green-200 hover:to-pink-200 transition-colors"
+          >
+            <div className="font-semibold">{t("fleet.request.header")}</div>
+            <div className="text-sm text-muted-foreground">{t("fleet.request.subtitle")}</div>
           </Link>
         )}
 
-        {canManager && (
-          <Link href="/fleet/manager" className="border rounded p-4 hover:bg-muted">
-            <div className="font-semibold">Fleet Manager</div>
-            <div className="text-sm text-muted-foreground">Assign vehicles/drivers, manage fleet and drivers, reports</div>
-          </Link>
-        )}
-
-        {isDriver && (
-          <Link href="/fleet/driver" className="border rounded p-4 hover:bg-muted">
-            <div className="font-semibold">Driver</div>
-            <div className="text-sm text-muted-foreground">View trips, acknowledge, log odometer, incidents, expenses</div>
+        {(userRoles.canManager || userRoles.isManager) && pathname !== "/hr-supervisor/fleet" && (
+          <Link
+            href="/fleet/manager"
+            className="border rounded p-4 bg-gradient-to-r from-green-100 to-pink-100 hover:from-green-200 hover:to-pink-200 transition-colors"
+          >
+            <div className="font-semibold">{t("fleet.manager.header")}</div>
+            <div className="text-sm text-muted-foreground">{t("fleet.manager.subtitle")}</div>
           </Link>
         )}
       </div>

@@ -29,6 +29,22 @@ type Ad = {
   likes: number
 }
 
+function getCommentAuthorName(author: any): string {
+  // Backend for /api/ads stores author as a simple string; if it's present, use it.
+  if (typeof author === 'string' && author.trim()) return author.trim()
+  if (!author) return 'Anonymous'
+  try {
+    const firstName = author.firstName || author.first_name || ''
+    const lastName = author.lastName || author.last_name || ''
+    const full = `${firstName} ${lastName}`.trim()
+    if (full) return full
+    if (author.email) return String(author.email)
+  } catch {
+    // ignore and fallback
+  }
+  return 'Anonymous'
+}
+
 export default function AdDetailPage({ params }: { params: { slug: string } }) {
   const { slug } = params
   const router = useRouter()
@@ -36,6 +52,7 @@ export default function AdDetailPage({ params }: { params: { slug: string } }) {
   const [comments, setComments] = useState<any[]>([])
   const [newComment, setNewComment] = useState("")
   const [branding, setBranding] = useState<{ companyName?: string; logoUrl?: string; slogan?: string } | null>(null)
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null)
   const [canEdit, setCanEdit] = useState(false)
   const fallbackBranding = {
     companyName: 'የፌደራል ሲቪል ሰርቪስ ኮሚሽን\nCivil Service Commission',
@@ -49,6 +66,40 @@ export default function AdDetailPage({ params }: { params: { slug: string } }) {
     const creator = roles.includes('ads_admin') || roles.includes('ads_editor') || roles.includes('admin')
     setCanEdit(creator)
   }, [])
+
+  // Determine current logged-in user's display name for comments
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = window.localStorage.getItem('user')
+      if (!raw) return
+      const u = JSON.parse(raw)
+      const firstName =
+        u?.firstName ||
+        u?.first_name ||
+        u?.givenName ||
+        u?.given_name ||
+        ''
+      const fatherName =
+        u?.fatherName ||
+        u?.father_name ||
+        u?.lastName ||
+        u?.last_name ||
+        ''
+      const combined = `${firstName} ${fatherName}`.trim()
+      const full = (u?.displayName || combined || '').trim()
+      if (full) setCurrentUserName(full)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const resolveCommentAuthor = (author: any): string => {
+    // For ad comments, the backend stores a per-comment author string.
+    // Use that directly (via getCommentAuthorName) so each comment shows
+    // the real commenter, not just the current logged-in user.
+    return getCommentAuthorName(author)
+  }
 
   async function load() {
     // list to find by slug
@@ -78,8 +129,58 @@ export default function AdDetailPage({ params }: { params: { slug: string } }) {
   }
   async function onPostComment() {
     if (!ad || !newComment.trim()) return
-    const res = await fetch(`/api/ads/${ad.id}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: newComment }) })
-    if (res.ok) { setNewComment(""); load() }
+
+    // Derive a robust display name from the logged-in user
+    let authorName = 'Anonymous'
+    if (typeof window !== 'undefined') {
+      const raw = window.localStorage.getItem('user')
+      if (raw) {
+        try {
+          const u = JSON.parse(raw)
+
+          // Try a wide range of possible fields
+          const firstName =
+            u?.firstName ||
+            u?.first_name ||
+            u?.givenName ||
+            u?.given_name ||
+            ''
+
+          const fatherName =
+            u?.fatherName ||
+            u?.father_name ||
+            u?.lastName ||
+            u?.last_name ||
+            ''
+
+          const combined = `${firstName} ${fatherName}`.trim()
+
+          const singleName =
+            u?.displayName ||
+            combined ||
+            u?.fullName ||
+            u?.full_name ||
+            u?.name ||
+            u?.username ||
+            u?.userName ||
+            ''
+
+          const emailFallback = u?.email || u?.mail || ''
+
+          const finalName = (singleName || emailFallback || '').trim()
+          if (finalName) authorName = finalName
+        } catch {
+          // keep Anonymous
+        }
+      }
+    }
+
+    const res = await fetch(`/api/ads/${ad.id}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: newComment, author: authorName }),
+    })
+    if (res.ok) { setNewComment(''); load() }
   }
 
   async function onVoteComment(id: string, dir: 'up'|'down') {
@@ -155,15 +256,23 @@ export default function AdDetailPage({ params }: { params: { slug: string } }) {
       </div>
 
       <div className="flex flex-wrap gap-2 text-sm text-gray-700">
-        <span className="px-2 py-0.5 border rounded">{ad.category}</span>
+        {ad.category && ad.category !== 'General' && (
+          <span className="px-2 py-0.5 border rounded">{ad.category}</span>
+        )}
         {ad.tags?.map((t)=> <span key={t} className="px-2 py-0.5 border rounded">#{t}</span>)}
         {ad.deadlineAt && <span className="px-2 py-0.5 border rounded bg-yellow-50">Deadline: {new Date(ad.deadlineAt).toLocaleDateString()}</span>}
         <span className="ml-auto">👁️ {ad.views}</span>
       </div>
 
       {ad.featuredImage && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={ad.featuredImage} alt="featured" className="w-full max-h-96 object-cover rounded" />
+        <div className="overflow-hidden rounded group">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={ad.featuredImage}
+            alt="featured"
+            className="w-full max-h-96 object-cover transition-transform duration-300 ease-out group-hover:scale-105"
+          />
+        </div>
       )}
 
       <article className="prose max-w-none">
@@ -183,22 +292,57 @@ export default function AdDetailPage({ params }: { params: { slug: string } }) {
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Comments</h2>
         <div className="flex gap-2">
-          <input className="flex-1 border rounded p-2" placeholder="Write a comment" value={newComment} onChange={e=>setNewComment(e.target.value)} />
-          <button className="px-3 py-2 bg-[#135a98] text-white rounded" onClick={onPostComment}>Post</button>
+          <input
+            className="flex-1 border rounded p-2"
+            placeholder="Write a comment"
+            value={newComment}
+            onChange={e => setNewComment(e.target.value)}
+          />
+          <button
+            className="px-3 py-2 bg-[#135a98] text-white rounded"
+            onClick={onPostComment}
+          >
+            Post
+          </button>
         </div>
         <div className="space-y-3">
-          {comments.map((c:any)=> (
-            <div key={c.id} className="border rounded p-3">
-              <div className="text-sm text-gray-600">{new Date(c.createdAt).toLocaleString()} • {c.author}</div>
-              <div className="mt-1 whitespace-pre-wrap">{c.content}</div>
+          {comments.map((c: any) => (
+            <div key={c.id} className="pb-3 border-b border-gray-200">
+              {/* Name and time row */}
+              <div className="flex items-center justify-between mb-1 text-sm text-gray-600">
+                <span className="font-semibold">{resolveCommentAuthor(c.author)}</span>
+                <span className="text-xs text-gray-500">{new Date(c.createdAt).toLocaleString()}</span>
+              </div>
+
+              {/* Comment text */}
+              <div className="whitespace-pre-wrap">{c.content}</div>
+
+              {/* Actions */}
               <div className="flex gap-2 items-center mt-2 text-sm">
-                <button className="px-2 py-1 border rounded" onClick={()=>onVoteComment(c.id, 'up')}>⬆️ {c.up}</button>
-                <button className="px-2 py-1 border rounded" onClick={()=>onVoteComment(c.id, 'down')}>⬇️ {c.down}</button>
-                <button className="px-2 py-1 border rounded" onClick={()=>onReportComment(c.id)}>{c.reported ? 'Reported' : 'Report'}</button>
+                <button
+                  className="px-3 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700"
+                  onClick={() => onVoteComment(c.id, 'up')}
+                >
+                  ⬆️ {c.up}
+                </button>
+                <button
+                  className="px-3 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700"
+                  onClick={() => onVoteComment(c.id, 'down')}
+                >
+                  ⬇️ {c.down}
+                </button>
+                <button
+                  className="px-3 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700"
+                  onClick={() => onReportComment(c.id)}
+                >
+                  {c.reported ? 'Reported' : 'Report'}
+                </button>
               </div>
             </div>
           ))}
-          {comments.length === 0 && <div className="text-sm text-gray-600">No comments yet.</div>}
+          {comments.length === 0 && (
+            <div className="text-sm text-gray-600">No comments yet.</div>
+          )}
         </div>
       </section>
 

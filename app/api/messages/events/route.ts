@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { addClient, removeClient } from "../_events";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {

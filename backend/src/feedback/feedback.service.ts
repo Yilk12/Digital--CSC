@@ -2,7 +2,7 @@ import { Injectable, ForbiddenException } from "@nestjs/common"
 import { type $Enums, UserRole } from "@prisma/client"
 import { PrismaService } from "../prisma/prisma.service"
 import { NotificationService } from "../common/notification.service"
-import { CreateFeedbackDto } from "./dto/create-feedback.dto"
+import { CreateFeedbackDto, FEEDBACK_TYPES } from "./dto/create-feedback.dto"
 
 @Injectable()
 export class FeedbackService {
@@ -60,7 +60,7 @@ export class FeedbackService {
       // We only have User.department as a string, so match by name
       const deptName = dept.name
       const heads = await this.prisma.user.findMany({
-        where: { role: UserRole.STAFF_MANAGER, isActive: true, department: deptName },
+        where: { role: UserRole.Department_Head, isActive: true, departmentId: deptName },
         select: { id: true },
       })
       for (const h of heads) {
@@ -75,7 +75,7 @@ export class FeedbackService {
       // If High priority, notify all GENERAL_DIRECTOR
       if (dto.escalationPriority === "HIGH") {
         const gms = await this.prisma.user.findMany({
-          where: { role: UserRole.GENERAL_DIRECTOR, isActive: true },
+          where: { role: UserRole.Commissioner, isActive: true },
           select: { id: true },
         })
         for (const gm of gms) {
@@ -97,14 +97,14 @@ export class FeedbackService {
   async listFeedback(
     query: {
       departmentId?: string
-      type?: $Enums.FeedbackType
+      type?: typeof FEEDBACK_TYPES[number]
       from?: Date
       to?: Date
     },
     requester: { userId: string; role: $Enums.UserRole; department?: string | null },
   ) {
     // Only ADMIN, STAFF_MANAGER (Dept Head), GENERAL_DIRECTOR (GM) allowed
-    const allowed: $Enums.UserRole[] = [UserRole.ADMIN, UserRole.STAFF_MANAGER, UserRole.GENERAL_DIRECTOR]
+    const allowed: $Enums.UserRole[] = [UserRole.ADMIN, UserRole.Department_Head, UserRole.Commissioner]
     if (!allowed.includes(requester.role)) {
       throw new ForbiddenException("Not authorized to view feedback")
     }
@@ -113,7 +113,7 @@ export class FeedbackService {
     const where: any = {}
     if (query.departmentId) where.departmentId = query.departmentId
 
-    if (requester.role === UserRole.STAFF_MANAGER) {
+    if (requester.role === UserRole.Department_Head) {
       if (!requester.department) throw new ForbiddenException("Department not set for manager")
       // Find department ids that match manager's department name
       const departments = await this.prisma.department.findMany({ where: { name: requester.department } })

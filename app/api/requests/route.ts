@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { addRequest, getRequests } from "@/lib/requests-store"
+import { addRequest, getRequests } from "@/backend/lib/requests-store"
 
 export async function GET() {
   const list = await getRequests()

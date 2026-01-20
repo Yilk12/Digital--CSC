@@ -43,7 +43,7 @@ export class AnalyticsController {
   }
 
   @ApiOperation({ summary: 'Get user analytics' })
-  @Roles(UserRole.ADMIN, UserRole.GENERAL_DIRECTOR, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Commissioner, UserRole.Department_Head)
   @Get('users')
   getUserAnalytics(@Req() req) {
     return this.analyticsService.getUserAnalytics();

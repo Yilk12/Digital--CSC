@@ -5,7 +5,6 @@ const PUBLIC_PATHS = [
   '/login',
   '/forgot-password',
   '/auth/sso/callback',
-  '/auth/mock',
 ]
 
 // Prefixes to ignore in middleware
@@ -15,7 +14,6 @@ const PUBLIC_PREFIXES = [
   '/favicon.ico',
   '/images',
   '/public',
-  '/auth/mock',
 ]
 
 // API routes that must be public (auth endpoints)
@@ -44,8 +42,8 @@ export function middleware(req: NextRequest) {
   // Allow public pages
   if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next()
 
-  // Check HttpOnly auth cookie
-  const token = req.cookies.get('auth_token')?.value
+  // Check HttpOnly auth cookie set by backend
+  const token = req.cookies.get('access_token')?.value
   if (!token) {
     const loginUrl = new URL('/login', req.url)
     // Preserve original destination
@@ -62,3 +60,4 @@ export const config = {
     '/((?!_next|static|favicon.ico|images|public).*)',
   ],
 }
+

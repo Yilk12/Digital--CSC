@@ -1,4 +1,4 @@
-import { supportedLanguages, translations as baseTranslations, type SupportedLanguage, type TranslationEntry } from '@/lib/localization'
+import { supportedLanguages, translations as baseTranslations, type SupportedLanguage, type TranslationEntry } from '@/backend/lib/localization'
 
 export type TranslationsMap = Record<string, TranslationEntry>
 

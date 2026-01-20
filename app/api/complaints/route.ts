@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { decodeJwt } from "@/app/lib/auth";
 import { addComplaint, listComplaints } from "@/app/lib/complaintsStore";
-import type { Complaint, ComplaintCategory } from "@/types/complaints";
+import type { Complaint, ComplaintCategory } from "@/backend/types/complaints";
 
 function getRolesFromToken(token: string | null): string[] {
   if (!token) return [];

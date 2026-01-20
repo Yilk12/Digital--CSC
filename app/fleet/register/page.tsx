@@ -1,8 +1,22 @@
 "use client"
 
 import React, { useState } from 'react'
+import Link from 'next/link'
+import { getCurrentUserRoles } from '@/app/lib/auth'
 
 export default function VehicleAssignmentRegistrationPage() {
+  const roles = getCurrentUserRoles().map(r => r.toLowerCase())
+  const canManager = roles.includes('manager') || roles.includes('fleet_manager')
+
+  if (!canManager) {
+    return (
+      <div style={{ maxWidth: 800, margin: '0 auto', padding: 20 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1f2937', marginBottom: 8 }}>Access denied</h1>
+        <p style={{ color: '#6b7280', marginBottom: 16 }}>Only Fleet Managers can access the Vehicle Assignment Registration page.</p>
+        <Link href="/fleet" style={{ color: '#2563eb', textDecoration: 'underline' }}>Back to Fleet Hub</Link>
+      </div>
+    )
+  }
   const [formData, setFormData] = useState({
     // Vehicle Information
     vehicleMake: '',
@@ -35,23 +49,12 @@ export default function VehicleAssignmentRegistrationPage() {
     carManagerSignature: '',
     carManagerDate: '',
     
-    // Department Head Acknowledgment
-    departmentHeadSignature: '',
-    departmentHeadDate: '',
-    
-    // Approval Section
-    fleetManagerSignature: '',
-    fleetManagerDate: '',
-    
     // Checklist
     vehicleKeysHandedOver: false,
     insuranceDocumentsProvided: false,
     fuelCardProvided: false,
     logbookIssued: false,
     vehicleInspectionCompleted: false,
-    
-    // Notes
-    notes: '',
     
     // Administrative Use
     trackingSystemEntryConfirmed: false,
@@ -93,16 +96,11 @@ export default function VehicleAssignmentRegistrationPage() {
       carManagerPosition: '',
       carManagerSignature: '',
       carManagerDate: '',
-      departmentHeadSignature: '',
-      departmentHeadDate: '',
-      fleetManagerSignature: '',
-      fleetManagerDate: '',
       vehicleKeysHandedOver: false,
       insuranceDocumentsProvided: false,
       fuelCardProvided: false,
       logbookIssued: false,
       vehicleInspectionCompleted: false,
-      notes: '',
       trackingSystemEntryConfirmed: false,
       assetRegisterUpdated: false
     })
@@ -506,84 +504,10 @@ export default function VehicleAssignmentRegistrationPage() {
           </div>
         </div>
 
-        {/* Department Head Acknowledgment Section */}
-        <div style={{ marginBottom: 30 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 'bold', color: '#1f2937', marginBottom: 20, borderBottom: '2px solid #e5e7eb', paddingBottom: 10 }}>
-            6. Acknowledgment by Department Head
-          </h2>
-          
-          <div style={{ backgroundColor: '#f9fafb', padding: 20, borderRadius: 8, marginBottom: 20 }}>
-            <p style={{ fontSize: 14, lineHeight: 1.6, color: '#374151', fontStyle: 'italic' }}>
-              "I acknowledge receipt of the vehicle listed above and accept full responsibility for its proper use, maintenance, and compliance with organizational policies. I will report any issues or damages immediately."
-            </p>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: '600', marginBottom: 5, color: '#374151' }}>
-                Signature of Department Head
-              </label>
-              <input
-                type="text"
-                value={formData.departmentHeadSignature}
-                onChange={(e) => handleInputChange('departmentHeadSignature', e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }}
-                placeholder="Digital signature or initials"
-              />
-            </div>
-            
-            <div>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: '600', marginBottom: 5, color: '#374151' }}>
-                Date
-              </label>
-              <input
-                type="date"
-                value={formData.departmentHeadDate}
-                onChange={(e) => handleInputChange('departmentHeadDate', e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Approval Section */}
-        <div style={{ marginBottom: 30 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 'bold', color: '#1f2937', marginBottom: 20, borderBottom: '2px solid #e5e7eb', paddingBottom: 10 }}>
-            7. Approval Section (Optional)
-          </h2>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: '600', marginBottom: 5, color: '#374151' }}>
-                Fleet Manager / Admin Officer Signature
-              </label>
-              <input
-                type="text"
-                value={formData.fleetManagerSignature}
-                onChange={(e) => handleInputChange('fleetManagerSignature', e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }}
-                placeholder="Digital signature or initials"
-              />
-            </div>
-            
-            <div>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: '600', marginBottom: 5, color: '#374151' }}>
-                Date
-              </label>
-              <input
-                type="date"
-                value={formData.fleetManagerDate}
-                onChange={(e) => handleInputChange('fleetManagerDate', e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }}
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Checklist Section */}
         <div style={{ marginBottom: 30 }}>
           <h2 style={{ fontSize: 20, fontWeight: 'bold', color: '#1f2937', marginBottom: 20, borderBottom: '2px solid #e5e7eb', paddingBottom: 10 }}>
-            8. Checklist (Optional but useful)
+            6. Checklist (Optional but useful)
           </h2>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 15 }}>
@@ -605,21 +529,6 @@ export default function VehicleAssignmentRegistrationPage() {
               </label>
             ))}
           </div>
-        </div>
-
-        {/* Notes Section */}
-        <div style={{ marginBottom: 30 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 'bold', color: '#1f2937', marginBottom: 20, borderBottom: '2px solid #e5e7eb', paddingBottom: 10 }}>
-            9. Notes or Special Instructions
-          </h2>
-          
-          <textarea
-            value={formData.notes}
-            onChange={(e) => handleInputChange('notes', e.target.value)}
-            rows={4}
-            style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14, resize: 'vertical' }}
-            placeholder="Any conditions, restrictions, or additional information..."
-          />
         </div>
 
         {/* Administrative Use Section */}

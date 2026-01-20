@@ -48,7 +48,7 @@ export class HelpdeskController {
   }
 
   @ApiOperation({ summary: "Get agent performance statistics" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Get("agent-performance")
   getAgentPerformance(@Request() req) {
     return this.helpdeskService.getAgentPerformance()
@@ -67,7 +67,7 @@ export class HelpdeskController {
   }
 
   @ApiOperation({ summary: "Get workload distribution" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Get("workload")
   getWorkloadDistribution(@Request() req) {
     return this.helpdeskService.getWorkloadDistribution()
@@ -81,7 +81,7 @@ export class HelpdeskController {
   }
 
   @ApiOperation({ summary: "Get escalation statistics" })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER, UserRole.SUPPORT_AGENT)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head, UserRole.SUPPORT_AGENT)
   @Get("escalations")
   getEscalationStats(@Request() req) {
     return this.helpdeskService.getEscalationStats(req.user.userId, req.user.role)
@@ -116,7 +116,7 @@ export class HelpdeskController {
   @ApiOperation({ summary: "Export helpdesk data" })
   @ApiQuery({ name: "format", required: false, enum: ["csv", "xlsx", "pdf"] })
   @ApiQuery({ name: "type", required: false, enum: ["tickets", "reports", "analytics"] })
-  @Roles(UserRole.ADMIN, UserRole.STAFF_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.Department_Head)
   @Get("export")
   exportData(
     @Request() req,

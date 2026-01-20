@@ -1,0 +1,10 @@
+-- CreateEnum
+CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE');
+
+-- CreateEnum
+CREATE TYPE "DisabilityType" AS ENUM ('BLIND', 'DEAF', 'PHYSICAL_OR_MOVEMENT_DISORDER', 'MENTAL_RETARDATION', 'OVERLAPPING_FACES', 'PSYCHOLOGICAL_AND_SOCIAL_DISORDER');
+
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "disabilityType" "DisabilityType",
+ADD COLUMN     "gender" "Gender",
+ADD COLUMN     "isDisabled" BOOLEAN NOT NULL DEFAULT false;

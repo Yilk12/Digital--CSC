@@ -1,10 +1,13 @@
-import { DashboardLayout } from "@/components/dashboard-layout"
-import { KnowledgeBase } from "@/components/knowledge-base"
+import { Suspense } from "react"
+import { DashboardLayout } from "@/app/components/dashboard-layout"
+import { KnowledgeBase } from "@/app/components/knowledge-base"
 
 export default function KnowledgeBasePage() {
   return (
-    <DashboardLayout>
-      <KnowledgeBase />
-    </DashboardLayout>
+    <Suspense fallback={<div className="p-4 text-sm text-gray-600">Loading knowledge base...</div>}>
+      <DashboardLayout>
+        <KnowledgeBase />
+      </DashboardLayout>
+    </Suspense>
   )
 }

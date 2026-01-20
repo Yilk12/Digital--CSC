@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { useLocalization } from "@/hooks/use-localization"
+import { useLocalization } from "@/app/hooks/use-localization"
 
 type Submission = {
   id: string

@@ -1,4 +1,4 @@
- // This is your Prisma schema file,
+// This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
@@ -6,6 +6,215 @@
 
 generator client {
   provider = "prisma-client-js"
+}
+
+// ====================================================================
+// WORKFLOW: HR OVERTIME NOTIFICATION MODEL
+// ====================================================================
+
+model HrOvertimeNotification {
+  id                String   @id @default(uuid()) @db.Uuid
+  message           String
+  overtimeRequestId String   @db.Uuid
+  reqId             String   @db.Uuid // requester id
+  actionByUserId    String?  @db.Uuid // who approved/rejected
+  departmentId      String?  @db.Uuid
+  createdAt         DateTime @default(now())
+
+  // Relations
+  overtimeRequest OvertimeRequest @relation(fields: [overtimeRequestId], references: [id])
+  requester       User            @relation("HrOvertimeNotificationRequester", fields: [reqId], references: [id])
+  actionBy        User?           @relation("HrOvertimeNotificationActionBy", fields: [actionByUserId], references: [id])
+  department      Department?     @relation(fields: [departmentId], references: [id])
+
+  @@index([overtimeRequestId])
+  @@index([reqId])
+  @@index([actionByUserId])
+  @@index([departmentId])
+}
+
+enum FuelAmountType {
+  LITER
+  COUPON
+  CASH
+}
+
+enum FuelStatus {
+  FUELED
+  NOT_FUELED
+  HALF_FUELED
+}
+
+model FuelRequest {
+  id          String @id @default(uuid()) @db.Uuid
+  requestorId String @db.Uuid
+  vehicleId   String @db.Uuid
+
+  date                 DateTime
+  odometer             Int
+  amount               Float
+  amountType           FuelAmountType
+  notes                String?
+  status               FuelStatus     @default(NOT_FUELED)
+  returnOdometerKm     Int?
+  remainingFuelRequest Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+  user    User    @relation(fields: [requestorId], references: [id])
+}
+
+// ====================================================================
+// WORKFLOW: OVERTIME REQUEST MODEL
+// ====================================================================
+
+model OvertimeRequest {
+  id           String                @id @default(uuid()) @db.Uuid
+  reqId        String                @db.Uuid
+  departmentId String?               @db.Uuid
+  overtimeType OvertimeType
+  durationType OvertimeDurationType
+  startTime    DateTime?
+  endTime      DateTime?
+  dates        DateTime[]
+  description  String?
+  status       RequestDecisionStatus @default(PENDING)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  // Relations
+  requestor                User?                      @relation(fields: [reqId], references: [id])
+  department               Department?                @relation(fields: [departmentId], references: [id])
+  notifications            OvertimeNotification[]
+  Vehicle                  Vehicle?                   @relation(fields: [vehicleId], references: [id])
+  vehicleId                String?                    @db.Uuid
+  HrOvertimeNotification   HrOvertimeNotification[]
+  UserOvertimeNotification UserOvertimeNotification[]
+
+  @@index([reqId])
+  @@index([departmentId])
+}
+
+// ====================================================================
+// WORKFLOW: OVERTIME NOTIFICATION MODEL
+// ====================================================================
+
+model OvertimeNotification {
+  id                String   @id @default(uuid()) @db.Uuid
+  message           String
+  userId            String   @db.Uuid
+  overtimeRequestId String   @db.Uuid
+  departmentId      String?  @db.Uuid
+  createdAt         DateTime @default(now())
+
+  // Relations
+  user            User            @relation(fields: [userId], references: [id])
+  overtimeRequest OvertimeRequest @relation(fields: [overtimeRequestId], references: [id])
+  department      Department?     @relation(fields: [departmentId], references: [id])
+  Vehicle         Vehicle?        @relation(fields: [vehicleId], references: [id])
+  vehicleId       String?         @db.Uuid
+
+  @@index([userId])
+  @@index([overtimeRequestId])
+  @@index([departmentId])
+}
+
+// ====================================================================
+// WORKFLOW: USER OVERTIME NOTIFICATION MODEL (per-requester)
+// ====================================================================
+
+model UserOvertimeNotification {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid // recipient (request owner)
+  message           String
+  overtimeRequestId String   @db.Uuid
+  departmentId      String?  @db.Uuid
+  actionByUserId    String?  @db.Uuid
+  createdAt         DateTime @default(now())
+
+  // Relations
+  user            User            @relation("UserOvertimeNotificationRecipient", fields: [userId], references: [id])
+  actionBy        User?           @relation("UserOvertimeNotificationActionBy", fields: [actionByUserId], references: [id])
+  overtimeRequest OvertimeRequest @relation(fields: [overtimeRequestId], references: [id])
+  department      Department?     @relation(fields: [departmentId], references: [id])
+
+  @@index([userId])
+  @@index([overtimeRequestId])
+  @@index([departmentId])
+  @@index([actionByUserId])
+}
+
+// ====================================================================
+// WORKFLOW: FIELD NOTIFICATION MODEL
+// ====================================================================
+
+model FieldNotification {
+  id             String   @id @default(uuid()) @db.Uuid
+  message        String
+  userId         String   @db.Uuid
+  fieldRequestId String   @db.Uuid
+  departmentId   String?  @db.Uuid
+  createdAt      DateTime @default(now())
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id])
+  fieldRequest FieldRequest @relation(fields: [fieldRequestId], references: [id])
+  department   Department?  @relation(fields: [departmentId], references: [id])
+
+  @@index([userId])
+  @@index([fieldRequestId])
+  @@index([departmentId])
+}
+
+// ====================================================================
+// WORKFLOW: HR NOTIFICATION MODEL
+// ====================================================================
+model HrNotification {
+  id             String   @id @default(uuid()) @db.Uuid
+  message        String
+  fieldRequestId String   @db.Uuid
+  reqId          String   @db.Uuid // requester id
+  actionByUserId String?  @db.Uuid // who approved/rejected
+  createdAt      DateTime @default(now())
+
+  // Relations
+  fieldRequest FieldRequest @relation(fields: [fieldRequestId], references: [id])
+  requester    User         @relation("HrNotificationRequester", fields: [reqId], references: [id])
+  actionBy     User?        @relation("HrNotificationActionBy", fields: [actionByUserId], references: [id])
+
+  @@index([fieldRequestId])
+  @@index([reqId])
+  @@index([actionByUserId])
+}
+
+// ====================================================================
+// USER NOTIFICATION MODEL (Generic per-user notifications)
+// ====================================================================
+model UserNotification {
+  id        String                 @id @default(uuid()) @db.Uuid
+  userId    String                 @db.Uuid
+  message   String
+  status    RequestDecisionStatus?
+  isRead    Boolean                @default(false)
+  createdAt DateTime               @default(now())
+
+  // Optional linkage to a workflow FieldRequest and Department and the actor
+  fieldRequestId String? @db.Uuid
+  departmentId   String? @db.Uuid
+  actionByUserId String? @db.Uuid
+
+  // Relations
+  user         User          @relation("UserNotificationRecipient", fields: [userId], references: [id])
+  actionBy     User?         @relation("UserNotificationActionBy", fields: [actionByUserId], references: [id])
+  fieldRequest FieldRequest? @relation(fields: [fieldRequestId], references: [id])
+  department   Department?   @relation(fields: [departmentId], references: [id])
+
+  @@index([userId])
+  @@index([fieldRequestId])
+  @@index([departmentId])
+  @@index([actionByUserId])
 }
 
 datasource db {
@@ -19,11 +228,19 @@ datasource db {
 
 enum UserRole {
   ADMIN
-  AGENT
   SUPPORT_AGENT
-  STAFF_MANAGER
-  GENERAL_DIRECTOR
+  Department_Head
+  Commissioner
   END_USER
+  Driver
+  Maintenace_Team
+  Finance_Department
+  Announcement_Creator
+  Fleet_Manager
+  Team_Leader
+  HR_Supervisor
+  Women_Social_Inclusion
+  Ethics_Anti_Corruption
 }
 
 enum UserType {
@@ -31,11 +248,29 @@ enum UserType {
   EXTERNAL
 }
 
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum DisabilityType {
+  BLIND
+  DEAF
+  PHYSICAL_OR_MOVEMENT_DISORDER
+  MENTAL_RETARDATION
+  OVERLAPPING_FACES
+  PSYCHOLOGICAL_AND_SOCIAL_DISORDER
+}
+
+// Account status for enabling/disabling user accounts
+enum AccountStatus {
+  ENABLED
+  DISABLED
+}
+
 enum TicketStatus {
-  OPEN
   IN_PROGRESS
   RESOLVED
-  CLOSED
   PENDING
 }
 
@@ -46,11 +281,15 @@ enum TicketPriority {
   LOW
 }
 
+enum ReadStatus {
+  OPEN
+  CLOSED
+}
+
 enum TicketCategory {
-  GENERAL
-  IT
-  HR
-  FINANCE
+  REQUEST
+  PROBLEM
+  CHANGE
   INCIDENT
 }
 
@@ -58,6 +297,7 @@ enum TicketCategory {
 enum SubmissionType {
   COMPLAINT
   SUGGESTION
+  COMPLIMENT
   REQUEST
   INCIDENT
 }
@@ -78,6 +318,7 @@ enum ArticleStatus {
   PUBLISHED
   ARCHIVED
 }
+
 enum Language {
   EN
   AM
@@ -87,7 +328,6 @@ enum Language {
   SI
   WO
 }
-
 
 // Abuse Reports enums
 enum ReportStatus {
@@ -104,71 +344,331 @@ enum ReportTargetType {
   COMMENT
 }
 
+enum ScheduleStatus {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+  FAILED
+}
+
+enum ReportFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+// Workflow: Plan & Report enums
+enum PlanStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum PlanPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum PlanItemStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  BLOCKED
+}
+
+enum WorkReportStatus {
+  SUBMITTED
+  REVIEWED
+  APPROVED
+  REJECTED
+}
+
+// Decision status for general requests (e.g., FieldRequest)
+enum RequestDecisionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ACCEPTED
+  NOT_ACCEPTED
+}
+
+// Overtime enums
+enum OvertimeType {
+  EXTRA_TIME
+  WEEKEND
+}
+
+enum OvertimeDurationType {
+  HALF_TIME
+  FULL_DAY
+}
+
+// Maintenance workflow enums
+enum MaintenanceStatus {
+  PENDING
+  IN_PROGRESS
+  MAINTAINED
+  REJECTED
+}
+
 // ====================================================================
 // CORE MODELS
 // ====================================================================
 
+// ====================================================================
+// USER MODEL
+// ====================================================================
+
 model User {
-  id                 String             @id @default(uuid()) @db.Uuid
-  email              String             @unique
-  firstName          String
-  lastName           String
-  password           String
-  phone              String?
-  role               UserRole
-  userType           UserType
-  department         String?
-  isActive           Boolean            @default(true)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id             String          @id @default(uuid()) @db.Uuid
+  email          String          @unique
+  firstName      String
+  middleName     String?
+  lastName       String
+  firstNameAm    String?
+  middleNameAm   String?
+  lastNameAm     String?
+  password       String
+  phone          String?
+  photoUrl       String?
+  role           UserRole
+  userType       UserType
+  gender         Gender?
+  isDisabled     Boolean         @default(false)
+  disabilityType DisabilityType?
+  departmentId   String?         @db.Uuid
+  department     Department?     @relation(fields: [departmentId], references: [id])
+  isActive       Boolean         @default(true)
+  accountStatus  AccountStatus   @default(ENABLED)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Existing relations...
+  createdTickets      Ticket[]          @relation("CreatedTickets")
+  assignedTickets     Ticket[]          @relation("AssignedTickets")
+  comments            TicketComment[]
+  auditLogs           AuditLog[]
+  planAssignmentsFrom PlanAssignment[]  @relation("PlanFromUser")
+  planAssignmentsTo   PlanAssignment[]  @relation("PlanToUser")
+  planHistories       PlanHistory[]     @relation("PlanHistoryByUser")
+  submissions         Submission[]      @relation("SubmissionUser")
+  receivedSubmissions Submission[]      @relation("SubmissionRecipient")
+  fleetRequests       FleetRequest[]
+  drivenTrips         Trip[]
+  articleComments     ArticleComment[]
+  articleFeedbacks    ArticleFeedback[]
+  reportedAbuses      AbuseReport[]     @relation("ReportedBy")
+  reportsGenerated    Report[]          @relation("ReportsGeneratedByUser")
+  reportSchedules     ReportSchedule[]  @relation("ReportSchedulesByUser")
+  authoredArticles    Article[]
+
+  workReports WorkReport[] @relation("WorkReportsByUser")
+  planReports PlanReport[] @relation("PlanReportsByUser")
+
+  userPermissions      UserPermission[]
+  vehicles             Vehicle[]
+  vehicleNotifications VehicleNotification[]
+  notifications        AllNotification[]     @relation("UserNotifications")
+  FieldRequest         FieldRequest[]
+  FieldNotification    FieldNotification[]
+
+  // ✅ Add these two relations properly:
+  hrNotificationsRequested HrNotification[] @relation("HrNotificationRequester")
+  hrNotificationsActioned  HrNotification[] @relation("HrNotificationActionBy")
+
+  // ✅ User notifications (generic, recipient and actor)
+  userNotificationsReceived         UserNotification[]         @relation("UserNotificationRecipient")
+  userNotificationsActioned         UserNotification[]         @relation("UserNotificationActionBy")
+  OvertimeRequest                   OvertimeRequest[]
+  OvertimeNotification              OvertimeNotification[]
+  hrOvertimeNotificationsRequested  HrOvertimeNotification[]   @relation("HrOvertimeNotificationRequester")
+  hrOvertimeNotificationsActioned   HrOvertimeNotification[]   @relation("HrOvertimeNotificationActionBy")
+  userOvertimeNotificationsReceived UserOvertimeNotification[] @relation("UserOvertimeNotificationRecipient")
+  userOvertimeNotificationsActioned UserOvertimeNotification[] @relation("UserOvertimeNotificationActionBy")
+  // Optional back-relations to Plan:
+  plansOwned                        Plan[]                     @relation("PlansByOwner")
+  departmentHeadPlans               Plan[]                     @relation("PlanDepartmentHead")
+  teamLeaderPlans                   Plan[]                     @relation("PlanTeamLeader")
+  endUserPlans                      Plan[]                     @relation("PlanEndUser")
+  AnnouncementComment               AnnouncementComment[]
+  DriverDetaile                     DriverDetaile[]
+  thirdPartyReportsRequested        ThirdPartySexualAssault[]  @relation("ThirdPartyRequester")
+  thirdPartyReportsVictim           ThirdPartySexualAssault[]  @relation("ThirdPartyVictim")
+  womenInclusionVictimReports       WomenadnSocilaInclusion[]  @relation("WomenInclusionVictim")
+  womenInclusionOffenderReports     WomenadnSocilaInclusion[]  @relation("WomenInclusionOffender")
+
+  // Maintenance schedules relations
+  maintenanceSchedulesOwned    MaintenanceSchedule[]      @relation("MaintenanceScheduleOwner")
+  maintenanceSchedulesActioned MaintenanceSchedule[]      @relation("MaintenanceScheduleActionBy")
+  AnnouncementCommentReply     AnnouncementCommentReply[]
+  VehicleReturn                VehicleReturn[]
+  ServiceRegistration          ServiceRegistration[]
+  fuelRequests                 FuelRequest[]
+  drivingRequests              FleetRequest[]             @relation("FleetRequestDriver")
+  requestedFleetRequests       FleetRequest[]             @relation("FleetRequestRequestor")
+  tripHistoryAsDriver          TripHistory[]              @relation("TripHistoryDriver")
+  tripHistoryAsRequestor       TripHistory[]              @relation("TripHistoryRequestor")
+}
+
+// trip  history 
+model TripHistory {
+  id String @id @default(uuid()) @db.Uuid
 
   // Relations
-  createdTickets     Ticket[]           @relation("CreatedTickets")
-  assignedTickets    Ticket[]           @relation("AssignedTickets")
-  comments           TicketComment[]
-  auditLogs          AuditLog[]
-  planAssignmentsFrom PlanAssignment[] @relation("PlanFromUser")
-  planAssignmentsTo  PlanAssignment[] @relation("PlanToUser")
-  planHistories      PlanHistory[]      @relation("PlanHistoryByUser")
-  submissions        Submission[]       @relation("SubmissionUser")
-  gmReviews          Submission[]       @relation("SubmissionGMReviewer")
-  fleetRequests      FleetRequest[]      // requestor -> FleetRequest
-  drivenTrips        Trip[]              // driver -> Trip
-  createdArticles    Article[]           // author -> Article
-  articleComments    ArticleComment[]    // author -> ArticleComment
-  articleFeedbacks   ArticleFeedback[]   // user -> ArticleFeedback
-  
-  // FIX APPLIED HERE: Added the opposite relation field for AbuseReport
-  reportedAbuses     AbuseReport[]      @relation("ReportedBy")
+  fleetRequestId Int
+  vehicleId      String  @db.Uuid
+  driverId       String  @db.Uuid
+  requestorId    String  @db.Uuid
+  departmentId   String? @db.Uuid
+
+  // Basic trip info (for Amharic table columns)
+  requesterName  String? // e.g. Hewan Getachew (optional snapshot)
+  requesterPhone String? // phone at time of trip
+  purpose        String? // የመስኩ አላማ
+  destination    String? // መድረሻ
+  date           DateTime? // የመስክ ቀን
+  startTime      String? // መነሻ ሰአት
+  endTime        String? // መጨረሻ ሰአት
+
+  // Metrics for history (km, passengers etc.)
+  startOdometerKm  Int?
+  returnOdometerKm Int?
+  odometerKmDiff   Int?
+  passengerCount   Int?
+  returnTime       String?
+  status           String? // e.g. ASSIGNED / COMPLETED
+
+  // Vehicle snapshot (for table display)
+  vehiclePlate     String? // መኪና ሰሌዳ
+  vehicleMakeModel String? // መኪና ስም
+  kmPerLiter       Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  fleetRequest FleetRequest @relation(fields: [fleetRequestId], references: [id])
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id])
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  driver       User         @relation("TripHistoryDriver", fields: [driverId], references: [id])
+  requestor    User         @relation("TripHistoryRequestor", fields: [requestorId], references: [id])
+
+  @@index([fleetRequestId])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([requestorId])
+  @@index([departmentId])
+}
+
+//vehicle notification
+model VehicleNotification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  vehicleId String?  @db.Uuid
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id])
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  @@index([userId])
+  @@index([vehicleId])
+}
+
+// ====================================================================
+// MODULE & PERMISSION MODELS (CORRECTED)
+// ====================================================================
+
+model Module {
+  id              Int              @id @default(autoincrement())
+  name            String           @unique
+  userPermissions UserPermission[]
+}
+
+model Permission {
+  id              Int              @id @default(autoincrement())
+  action          String           @unique
+  userPermissions UserPermission[]
+}
+
+// ====================================================================
+// USER PERMISSIONS (JOIN TABLE) - CORRECTED
+// ====================================================================
+
+model UserPermission {
+  id           Int      @id @default(autoincrement())
+  userId       String   @db.Uuid
+  moduleId     Int
+  permissionId Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user       User       @relation(fields: [userId], references: [id])
+  module     Module     @relation(fields: [moduleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([userId, moduleId, permissionId])
 }
 
 model Department {
-  id          String       @id @default(uuid()) @db.Uuid
+  id          String   @id @default(uuid()) @db.Uuid
   name        String
   nameAm      String?
   description String?
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  tickets     Ticket[]
-  submissions Submission[]
+  tickets               Ticket[]
+  submissions           Submission[]
+  users                 User[]
+  fleetRequests         FleetRequest[]
+  AllNotification       AllNotification[]
+  FieldRequest          FieldRequest[]
+  FieldNotification     FieldNotification[]
+  UserNotification      UserNotification[]
+  plans                 Plan[]
+  womenInclusionReports WomenadnSocilaInclusion[]
+
+  // Overtime relations
+  OvertimeRequest          OvertimeRequest[]
+  OvertimeNotification     OvertimeNotification[]
+  HrOvertimeNotification   HrOvertimeNotification[]
+  UserOvertimeNotification UserOvertimeNotification[]
+  TripHistory              TripHistory[]
 }
 
 model Ticket {
-  id            String             @id @default(uuid()) @db.Uuid
-  title         String
-  description   String
-  status        TicketStatus       @default(OPEN)
-  priority      TicketPriority
-  category      TicketCategory
-  createdById   String
-  assigneeId    String?
-  departmentId  String?
-  slaDeadline   DateTime?
-  resolvedAt    DateTime?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  id           String         @id @default(uuid()) @db.Uuid
+  title        String
+  description  String
+  status       TicketStatus   @default(IN_PROGRESS)
+  priority     TicketPriority
+  category     TicketCategory
+  createdById  String         @db.Uuid
+  assigneeId   String?        @db.Uuid
+  departmentId String?        @db.Uuid
+  slaDeadline  DateTime?
+  resolvedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // New column added here
+  // Now defaults to CLOSED for everyone
+  isRead ReadStatus @default(CLOSED)
 
   // Relations
   creator       User               @relation("CreatedTickets", fields: [createdById], references: [id])
@@ -177,82 +677,215 @@ model Ticket {
   comments      TicketComment[]
   attachments   TicketAttachment[]
   auditLogs     AuditLog[]
+  notifications AllNotification[]  @relation("TicketNotifications")
+}
+
+// notification
+model AllNotification {
+  id        String   @id @default(uuid()) @db.Uuid
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId       String  @db.Uuid
+  ticketId     String? @db.Uuid
+  departmentId String? @db.Uuid
+
+  // Relations
+  user       User        @relation("UserNotifications", fields: [userId], references: [id])
+  ticket     Ticket?     @relation("TicketNotifications", fields: [ticketId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
 }
 
 model Category {
-  id          String     @id @default(uuid()) @db.Uuid
-  name        String     @unique
-  isActive    Boolean    @default(true)
-  parentId    String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  parentId  String?  @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children    Category[] @relation("CategoryHierarchy")
-  articles    Article[]
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  articles Article[]
 }
 
-model TicketComment {
-  id          String   @id @default(uuid()) @db.Uuid
-  ticketId    String
-  authorId    String
-  content     String
-  createdAt   DateTime @default(now())
+// model
 
-  ticket      Ticket @relation(fields: [ticketId], references: [id])
-  author      User   @relation(fields: [authorId], references: [id])
+model TicketComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  ticketId  String   @db.Uuid
+  authorId  String   @db.Uuid
+  content   String
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
 }
 
 model TicketAttachment {
-  id          String   @id @default(uuid()) @db.Uuid
-  ticketId    String
-  filename    String
-  filepath    String
-  mimetype    String
-  size        Int
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid()) @db.Uuid
+  ticketId  String   @db.Uuid
+  filename  String
+  filepath  String
+  mimetype  String
+  size      Int
+  createdAt DateTime @default(now())
 
-  ticket      Ticket @relation(fields: [ticketId], references: [id])
+  ticket Ticket @relation(fields: [ticketId], references: [id])
 }
 
 model AuditLog {
-  id          String   @id @default(uuid()) @db.Uuid
-  action      String
-  entity      String
-  entityId    String
-  userId      String
-  ticketId    String?
-  oldValues   Json?
-  newValues   Json?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid()) @db.Uuid
+  action    String
+  entity    String
+  entityId  String
+  userId    String   @db.Uuid
+  ticketId  String?  @db.Uuid
+  oldValues Json?
+  newValues Json?
+  createdAt DateTime @default(now())
 
-  user        User     @relation(fields: [userId], references: [id])
-  ticket      Ticket?  @relation(fields: [ticketId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
 }
 
 model PlanAssignment {
-  id          String   @id @default(uuid()) @db.Uuid
-  planId      String
-  fromUserId  String
-  toUserId    String
-  level       String
-  notes       String?
-  dueDate     DateTime?
-  createdAt   DateTime @default(now())
+  id         String    @id @default(uuid()) @db.Uuid
+  planId     String
+  fromUserId String    @db.Uuid
+  toUserId   String    @db.Uuid
+  level      String
+  notes      String?
+  dueDate    DateTime?
+  createdAt  DateTime  @default(now())
 
-  fromUser    User     @relation("PlanFromUser", fields: [fromUserId], references: [id])
-  toUser      User     @relation("PlanToUser", fields: [toUserId], references: [id])
+  fromUser User @relation("PlanFromUser", fields: [fromUserId], references: [id])
+  toUser   User @relation("PlanToUser", fields: [toUserId], references: [id])
 }
 
 model PlanHistory {
-  id          String   @id @default(uuid()) @db.Uuid
-  planId      String
-  byUserId    String
-  action      String
-  comments    String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid()) @db.Uuid
+  planId    String
+  byUserId  String   @db.Uuid
+  action    String
+  comments  String?
+  createdAt DateTime @default(now())
 
-  byUser      User     @relation("PlanHistoryByUser", fields: [byUserId], references: [id])
+  byUser User @relation("PlanHistoryByUser", fields: [byUserId], references: [id])
+}
+
+// ====================================================================
+// WORKFLOW: PLAN & REPORT MODELS
+// ====================================================================
+
+model Plan {
+  id          String     @id @default(uuid()) @db.Uuid
+  ownerId     String     @db.Uuid
+  title       String
+  titleAm     String?
+  type        String?
+  typeAm      String?
+  description String?
+  period      PlanPeriod
+  startDate   DateTime
+  endDate     DateTime
+  status      PlanStatus @default(DRAFT)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  fileUrl     String?
+
+  // Associations to org/users
+  departmentId     String? @db.Uuid
+  departmentHeadId String? @db.Uuid
+  teamLeaderId     String? @db.Uuid
+  endUserId        String? @db.Uuid
+
+  // Tasks list (array of strings)
+  tasks String[] @default([])
+
+  owner          User         @relation("PlansByOwner", fields: [ownerId], references: [id])
+  department     Department?  @relation(fields: [departmentId], references: [id])
+  departmentHead User?        @relation("PlanDepartmentHead", fields: [departmentHeadId], references: [id])
+  teamLeader     User?        @relation("PlanTeamLeader", fields: [teamLeaderId], references: [id])
+  endUser        User?        @relation("PlanEndUser", fields: [endUserId], references: [id])
+  items          PlanItem[]
+  reports        WorkReport[]
+  planReports    PlanReport[]
+}
+
+model PlanItem {
+  id          String         @id @default(uuid()) @db.Uuid
+  planId      String         @db.Uuid
+  title       String
+  details     String?
+  targetValue Float?
+  unit        String?
+  dueDate     DateTime?
+  status      PlanItemStatus @default(PENDING)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  plan        Plan             @relation(fields: [planId], references: [id])
+  reportItems WorkReportItem[]
+}
+
+model WorkReport {
+  id         String           @id @default(uuid()) @db.Uuid
+  reporterId String           @db.Uuid
+  planId     String?          @db.Uuid
+  date       DateTime
+  summary    String?
+  details    String?
+  status     WorkReportStatus @default(SUBMITTED)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  reporter User             @relation("WorkReportsByUser", fields: [reporterId], references: [id])
+  plan     Plan?            @relation(fields: [planId], references: [id])
+  items    WorkReportItem[]
+}
+
+model WorkReportItem {
+  id           String   @id @default(uuid()) @db.Uuid
+  workReportId String   @db.Uuid
+  planItemId   String?  @db.Uuid
+  actualValue  Float?
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  workReport WorkReport @relation(fields: [workReportId], references: [id])
+  planItem   PlanItem?  @relation(fields: [planItemId], references: [id])
+}
+
+// PlanReport captures weekly (or other frequency) team reports linked to a Plan and a User
+model PlanReport {
+  id                            String            @id @default(uuid()) @db.Uuid
+  planId                        String            @db.Uuid
+  userId                        String            @db.Uuid
+  reportingFrequency            ReportFrequency[] @default([])
+  keyTasksCompletedThisWeek     String[]          @default([])
+  progressVsGoals               String[]          @default([])
+  majorChallengesAndResolutions String[]          @default([])
+  teamCollaborationHighlights   String[]          @default([])
+  performanceMetrics            String[]          @default([])
+  learningOrInsights            String[]          @default([])
+  planForNextWeek               String[]          @default([])
+  teamLeaderComment             String?
+  departmentHeadComment         String?
+  planAndStrategiesComment      String?
+  teamLeaderApproved            Boolean           @default(false)
+  departmentHeadApproved        Boolean           @default(false)
+  fileUrl                       String?
+  createdAt                     DateTime          @default(now())
+  updatedAt                     DateTime          @updatedAt
+
+  // Relations
+  plan Plan @relation(fields: [planId], references: [id])
+  user User @relation("PlanReportsByUser", fields: [userId], references: [id])
+
+  @@index([planId])
+  @@index([userId])
 }
 
 // ====================================================================
@@ -260,44 +893,72 @@ model PlanHistory {
 // ====================================================================
 
 model Article {
-  id             String          @id @default(uuid()) @db.Uuid
-  title          String
-  titleAm        String?
-  content        String
-  contentAm      String?
-  excerpt        String?
-  status         ArticleStatus   @default(DRAFT)
-  language       Language
-  viewCount      Int             @default(0)
-  likeCount      Int             @default(0)
-  dislikeCount   Int             @default(0)
-  authorId       String
-  categoryId     String?
-  publishedAt    DateTime?
-  expiresAt      DateTime?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id           String        @id @default(uuid()) @db.Uuid
+  title        String
+  titleAm      String?
+  content      String
+  contentAm    String?
+  excerpt      String?
+  status       ArticleStatus @default(DRAFT)
+  language     Language
+  viewCount    Int           @default(0)
+  likeCount    Int           @default(0)
+  dislikeCount Int           @default(0)
+  categoryId   String?       @db.Uuid
+  authorId     String?       @db.Uuid
+  publishedAt  DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
-  author         User            @relation(fields: [authorId], references: [id])
-  category       Category?       @relation(fields: [categoryId], references: [id])
-  tags           ArticleTag[]
-  comments       ArticleComment[]
-  attachments    ArticleAttachment[]
-  feedback       ArticleFeedback[]
+  // Optional relation
+  category    Category?           @relation(fields: [categoryId], references: [id])
+  author      User?               @relation(fields: [authorId], references: [id])
+  tags        ArticleTag[]
+  comments    ArticleComment[]
+  attachments ArticleAttachment[]
+  feedback    ArticleFeedback[]
+}
+
+model DriverDetaile {
+  id                    String   @id @default(uuid()) @db.Uuid
+  userId                String   @db.Uuid
+  empId                 String
+  dateOfBirth           DateTime
+  address               String?
+  licenceNumber         String
+  licenceClass          String
+  licenceExpiredDate    DateTime
+  issuedBy              String
+  vehicleId             String?  @db.Uuid
+  emergencyContactName  String
+  emergencyContactPhone String
+  additionalInformation String?
+  licenceCertificate    String?
+  image                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, empId])
+  @@index([userId])
+  @@index([vehicleId])
 }
 
 model Tag {
-  id          String     @id @default(uuid()) @db.Uuid
-  name        String     @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   articleTags ArticleTag[]
 }
 
 model ArticleTag {
-  articleId String
-  tagId     String
+  articleId String @db.Uuid
+  tagId     String @db.Uuid
 
   article Article @relation(fields: [articleId], references: [id])
   tag     Tag     @relation(fields: [tagId], references: [id])
@@ -306,37 +967,37 @@ model ArticleTag {
 }
 
 model ArticleAttachment {
-  id          String   @id @default(uuid()) @db.Uuid
-  articleId   String
-  filename    String
-  filepath    String
-  mimetype    String
-  size        Int
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid()) @db.Uuid
+  articleId String   @db.Uuid
+  filename  String
+  filepath  String
+  mimetype  String
+  size      Int
+  createdAt DateTime @default(now())
 
-  article     Article @relation(fields: [articleId], references: [id])
+  article Article @relation(fields: [articleId], references: [id])
 }
 
 model ArticleComment {
-  id          String   @id @default(uuid()) @db.Uuid
-  articleId   String
-  authorId    String
-  content     String
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid()) @db.Uuid
+  articleId String   @db.Uuid
+  authorId  String   @db.Uuid
+  content   String
+  createdAt DateTime @default(now())
 
-  article     Article @relation(fields: [articleId], references: [id])
-  author      User    @relation(fields: [authorId], references: [id])
+  article Article @relation(fields: [articleId], references: [id])
+  author  User    @relation(fields: [authorId], references: [id])
 }
 
 model ArticleFeedback {
-  id          String   @id @default(uuid()) @db.Uuid
-  articleId   String
-  userId      String
-  isLike      Boolean
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid()) @db.Uuid
+  articleId String   @db.Uuid
+  userId    String   @db.Uuid
+  isLike    Boolean
+  createdAt DateTime @default(now())
 
-  article     Article @relation(fields: [articleId], references: [id])
-  user        User    @relation(fields: [userId], references: [id])
+  article Article @relation(fields: [articleId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
 }
 
 // ====================================================================
@@ -344,101 +1005,465 @@ model ArticleFeedback {
 // ====================================================================
 
 model Submission {
-  id                  String             @id @default(uuid()) @db.Uuid
-  userId              String?
-  submitterName       String?
-  submitterDepartment String?
-  contactEmail        String?
-  contactPhone        String?
-  anonymous           Boolean            @default(false)
-  type                SubmissionType
-  subject             String
-  description         String
-  status              SubmissionStatus   @default(SUBMITTED)
-  decisionSummary     String?
-  decisionAt          DateTime?
-  gmReviewerId        String?
-  assignedDepartmentId String?
-  escalatedTo         String?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  id              String         @id @default(uuid()) @db.Uuid
+  userId          String?        @db.Uuid
+  recipientUserId String?        @db.Uuid
+  departmentId    String?        @db.Uuid
+  anonymous       Boolean        @default(false)
+  type            SubmissionType
+  message         String         @map("description")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
-  user                User?              @relation("SubmissionUser", fields: [userId], references: [id])
-  gmReviewer          User?              @relation("SubmissionGMReviewer", fields: [gmReviewerId], references: [id])
-  assignedDepartment  Department?        @relation(fields: [assignedDepartmentId], references: [id])
+  user          User?                  @relation("SubmissionUser", fields: [userId], references: [id])
+  recipientUser User?                  @relation("SubmissionRecipient", fields: [recipientUserId], references: [id])
+  department    Department?            @relation(fields: [departmentId], references: [id])
+  attachments   SubmissionAttachment[]
+
+  @@index([recipientUserId])
+  @@index([departmentId])
+}
+
+// Voicebox attachments
+model SubmissionAttachment {
+  id           String   @id @default(uuid()) @db.Uuid
+  submissionId String   @db.Uuid
+  filename     String
+  filepath     String
+  mimetype     String
+  size         Int
+  createdAt    DateTime @default(now())
+
+  submission Submission @relation(fields: [submissionId], references: [id])
 }
 
 model AbuseReport {
-  id          String             @id @default(uuid()) @db.Uuid
-  reporterId  String
+  id          String           @id @default(uuid()) @db.Uuid
+  reporterId  String           @db.Uuid
   targetType  ReportTargetType
   targetId    String
   reason      String
   description String?
-  status      ReportStatus       @default(PENDING)
-  createdAt   DateTime           @default(now())
+  status      ReportStatus     @default(PENDING)
+  createdAt   DateTime         @default(now())
 
-  // FIX APPLIED HERE: Explicitly named the relation
-  reporter    User               @relation("ReportedBy", fields: [reporterId], references: [id])
+  reporter User @relation("ReportedBy", fields: [reporterId], references: [id])
 
   @@unique([targetType, targetId, status], map: "uniq_open_report_per_target")
+}
+
+model Report {
+  id            String   @id @default(uuid()) @db.Uuid
+  type          String
+  format        String
+  data          Json?
+  filename      String?
+  mimeType      String?
+  generatedById String   @db.Uuid
+  createdAt     DateTime @default(now())
+
+  generatedBy User @relation("ReportsGeneratedByUser", fields: [generatedById], references: [id])
+}
+
+model ReportSchedule {
+  id            String          @id @default(uuid()) @db.Uuid
+  reportType    String
+  config        Json?
+  frequency     ReportFrequency
+  recipients    String[]
+  scheduledById String          @db.Uuid
+  nextRun       DateTime
+  status        ScheduleStatus  @default(ACTIVE)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  scheduledBy User @relation("ReportSchedulesByUser", fields: [scheduledById], references: [id])
 }
 
 // ====================================================================
 // FLEET MODULE MODELS
 // ====================================================================
 
-model Vehicle {
-  id           String   @id @default(uuid()) @db.Uuid
-  plate        String   @unique
-  make         String?
-  model        String?
-  year         Int?
-  departmentId String?
-  createdAt    DateTime @default(now())
+// ====================================================================
+// WORKFLOW: FIELD REQUEST MODEL
+// ====================================================================
 
-  trips        Trip[]
+model FieldRequest {
+  id           String                @id @default(uuid()) @db.Uuid
+  reqId        String                @db.Uuid
+  departmentId String?               @db.Uuid
+  fieldType    String
+  description  String?
+  location     String?
+  fromDate     DateTime
+  toDate       DateTime
+  startTime    DateTime?
+  endTime      DateTime?
+  durationType String?
+  isRead       ReadStatus            @default(CLOSED)
+  status       RequestDecisionStatus @default(PENDING)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  // Relations
+  requestor         User?               @relation(fields: [reqId], references: [id])
+  department        Department?         @relation(fields: [departmentId], references: [id])
+  FieldNotification FieldNotification[]
+  HrNotification    HrNotification[]
+  UserNotification  UserNotification[]
+
+  @@index([reqId])
+  @@index([departmentId])
+}
+
+enum VehicleType {
+  NEW
+  USED
+}
+
+model Vehicle {
+  id              String    @id @default(uuid()) @db.Uuid
+  plate           String    @unique
+  make            String?
+  model           String?
+  year            Int?
+  // Country where the car was manufactured
+  countryOfOrigin String?
+  // How many persons can sit in the car
+  seatingCapacity Int?
+  // How many kilometers the car moves per liter of fuel
+  kmPerLiter      Float?
+  vehicleTypeName String?
+  chassisNumber   String?
+  engineNumber    String?
+  fuelType        String?
+  cylinderCount   Int?
+  userId          String?   @db.Uuid
+  reqId           Int?
+  isCompleted     Boolean   @default(false) // Add this line
+  endTime         DateTime? // Add this line - optional end time
+
+  user                User?                 @relation(fields: [userId], references: [id])
+  request             FleetRequest?         @relation(fields: [reqId], references: [id])
+  trips               Trip[]
+  createdAt           DateTime              @default(now())
+  VehicleNotification VehicleNotification[]
+  type                VehicleType           @default(NEW)
+
+  // Overtime relations
+  overtimeRequests       OvertimeRequest[]
+  overtimeNotifications  OvertimeNotification[]
+  DriverDetaile          DriverDetaile[]
+  fleetCostRegistrations FleetCostRegistration[]
+
+  // Maintenance schedules
+  maintenanceSchedules MaintenanceSchedule[]
+  // Maintained vehicles history
+  maintainedVehicles   MaintainedVehicle[]
+  VehicleReturn        VehicleReturn[]
+  ServiceRegistration  ServiceRegistration[]
+  fuelRequests         FuelRequest[]
+  TripHistory          TripHistory[]
 }
 
 model FleetRequest {
-  id          Int      @id @default(autoincrement())
-  requestorId String
-  purpose     String
-  tripType    String?
-  destination String?
-  date        DateTime
-  status      String   @default("PENDING")
-  createdAt   DateTime @default(now())
+  id           Int     @id @default(autoincrement())
+  requestorId  String  @db.Uuid
+  purpose      String
+  tripType     String?
+  destination  String?
+  departmentId String? @db.Uuid
 
-  requestor   User?    @relation(fields: [requestorId], references: [id])
+  durationType String?
+
+  date      DateTime
+  fromDate  DateTime?
+  toDate    DateTime?
+  startTime String?
+  endTime   String?
+
+  // NEW: assigned driver
+  driverId String? @db.Uuid
+  driver   User?   @relation("FleetRequestDriver", fields: [driverId], references: [id])
+
+  // Trip metrics
+  startOdometerKm  Int?
+  odometerKmDiff   Int?
+  returnOdometerKm Int?
+  returnTime       String?
+  passengerCount   Int?
+
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+
+  // existing relations
+  requestor   User?         @relation("FleetRequestRequestor", fields: [requestorId], references: [id])
+  department  Department?   @relation(fields: [departmentId], references: [id])
+  vehicles    Vehicle[]
+  User        User?         @relation(fields: [userId], references: [id])
+  userId      String?       @db.Uuid
+  TripHistory TripHistory[]
 }
 
 model Trip {
   id          String   @id @default(uuid()) @db.Uuid
-  vehicleId   String
-  driverId    String
+  vehicleId   String   @db.Uuid
+  driverId    String   @db.Uuid
   startAt     DateTime
   origin      String?
   destination String?
   distanceKm  Float?
   createdAt   DateTime @default(now())
 
-  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
-  driver      User     @relation(fields: [driverId], references: [id])
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+  driver  User    @relation(fields: [driverId], references: [id])
+}
+
+//model 
+model VehicleReturn {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Relations
+  driverId String @db.Uuid
+  driver   User   @relation(fields: [driverId], references: [id])
+
+  vehicleId String  @db.Uuid
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
+
+  plateNumber String
+
+  returnedAt      DateTime
+  finalOdometerKm Int
+  fuelLevel       String
+
+  warningLightsOn   Boolean
+  vehicleInspection String
+
+  description String?
+
+  fileUrl  String?
+  fileName String?
+  fileType String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ServiceRegistration {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Link to vehicle
+  vehicleId String  @db.Uuid
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
+
+  plateNumber     String
+  vehicleModel    String?
+  odometerKm      Int
+  reachedDate5000 DateTime?
+
+  // Who brought the vehicle (driver)
+  driverId   String? @db.Uuid
+  driver     User?   @relation(fields: [driverId], references: [id])
+  driverName String?
+
+  // Where the service is requested/performed
+  garageName    String?
+  serviceCenter String?
+  serviceStart  DateTime?
+  serviceEnd    DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+// Maintenance schedule model
+model MaintenanceSchedule {
+  id                      String            @id @default(uuid()) @db.Uuid
+  vehicleId               String            @db.Uuid
+  userId                  String            @db.Uuid
+  incidentDate            DateTime
+  location                String?
+  status                  MaintenanceStatus @default(PENDING)
+  IncidentType            String?
+  actionByUserId          String?           @db.Uuid
+  description             String?
+  maintenanceScheduleTime DateTime?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  // Relations
+  vehicle  Vehicle @relation(fields: [vehicleId], references: [id])
+  user     User    @relation("MaintenanceScheduleOwner", fields: [userId], references: [id])
+  actionBy User?   @relation("MaintenanceScheduleActionBy", fields: [actionByUserId], references: [id])
+
+  @@index([vehicleId])
+  @@index([userId])
+  @@index([actionByUserId])
+}
+
+// Status for MaintainedVehicle records
+enum MaintainedVehicleStatus {
+  ACCEPTED
+  REJECTED
+}
+
+// Maintained vehicle history records
+model MaintainedVehicle {
+  id            String   @id @default(uuid()) @db.Uuid
+  vehicleId     String   @db.Uuid
+  completedDate DateTime
+  description   String?
+  cost          Decimal? @db.Decimal(12, 2)
+
+  imageUrl  String?
+  createdAt DateTime                @default(now())
+  status    MaintainedVehicleStatus
+
+  // Relations
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+
+  @@index([vehicleId])
+}
+
+// Fleet cost registration records
+model FleetCostRegistration {
+  id          String   @id @default(uuid()) @db.Uuid
+  date        DateTime
+  vehicleId   String   @db.Uuid
+  category    String?
+  amount      Decimal  @db.Decimal(14, 2)
+  currency    String   @default("ETB")
+  reference   String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+
+  @@index([vehicleId])
+}
+
+model WomenadnSocilaInclusion {
+  id                          String   @id @default(uuid()) @db.Uuid
+  typeOfMisconduct            String
+  dateTime                    DateTime
+  location                    String?
+  detailDescriptionOfIncident String?
+  reportedBefore              Boolean
+  medicalHelpNeeded           Boolean
+  fileUrl                     String?
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  victimId                    String?  @db.Uuid
+  departmentId                String?  @db.Uuid
+  userId                      String?  @db.Uuid
+
+  victim            User?                     @relation("WomenInclusionVictim", fields: [victimId], references: [id])
+  department        Department?               @relation(fields: [departmentId], references: [id])
+  offender          User?                     @relation("WomenInclusionOffender", fields: [userId], references: [id])
+  thirdPartyReports ThirdPartySexualAssault[]
+
+  @@index([victimId])
+  @@index([departmentId])
+  @@index([userId])
+}
+
+model ThirdPartySexualAssault {
+  id                           String   @id @default(uuid()) @db.Uuid
+  misconductId                 String   @db.Uuid
+  typeOfMisconduct             String
+  dateTime                     DateTime
+  location                     String?
+  descriptionOfWhatWasObserved String?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+
+  reqId    String  @db.Uuid
+  victimId String? @db.Uuid
+
+  misconduct WomenadnSocilaInclusion @relation(fields: [misconductId], references: [id])
+  requester  User                    @relation("ThirdPartyRequester", fields: [reqId], references: [id])
+  victim     User?                   @relation("ThirdPartyVictim", fields: [victimId], references: [id])
+
+  @@index([misconductId])
+  @@index([reqId])
+  @@index([victimId])
 }
 
 // ====================================================================
 // SYSTEM SETTINGS MODEL
 // ====================================================================
 
-/**
- * @description Centralized key/value store for application configuration.
- */
 model SystemSetting {
   id          Int      @id @default(autoincrement())
-  key         String   @unique  // e.g., 'SLA_DEFAULT_DAYS', 'MAX_FILE_UPLOAD_SIZE'
-  value       String   // The setting value, stored as a string (e.g., '3', '50MB')
+  key         String   @unique
+  value       String
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// Password policy configuration
+model PasswordPolicy {
+  id                       Int      @id @default(autoincrement())
+  minLength                Int      @default(12)
+  requireUppercase         Boolean  @default(true)
+  requireLowercase         Boolean  @default(true)
+  requireDigit             Boolean  @default(true)
+  requireSpecialcharSymbol Boolean  @default(true)
+  expirationDays           Int      @default(90)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+// ====================================================================
+// ANNOUNCEMENTS MODELS
+// ====================================================================
+
+model Announcement {
+  id           String   @id @default(uuid()) @db.Uuid
+  title        String
+  description  String?
+  date         DateTime
+  likeCount    Int      @default(0)
+  dislikeCount Int      @default(0)
+  imageUrl     String?
+  status       String   @default("published")
+  category     String   @default("General")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  comments AnnouncementComment[]
+}
+
+model AnnouncementComment {
+  id             String   @id @default(uuid()) @db.Uuid
+  announcementId String   @db.Uuid
+  authorId       String?  @db.Uuid
+  content        String
+  createdAt      DateTime @default(now())
+
+  // Relations
+  announcement Announcement               @relation(fields: [announcementId], references: [id])
+  author       User?                      @relation(fields: [authorId], references: [id])
+  replies      AnnouncementCommentReply[]
+
+  @@index([announcementId])
+  @@index([authorId])
+}
+
+model AnnouncementCommentReply {
+  id        String   @id @default(uuid()) @db.Uuid
+  commentId String   @db.Uuid
+  authorId  String?  @db.Uuid
+  content   String
+  createdAt DateTime @default(now())
+
+  // Relations
+  comment AnnouncementComment @relation(fields: [commentId], references: [id])
+  author  User?               @relation(fields: [authorId], references: [id])
+
+  @@index([commentId])
+  @@index([authorId])
 }

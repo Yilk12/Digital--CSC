@@ -54,7 +54,7 @@ export class ReportsService {
     const { dateFrom, dateTo, format } = generateReportDto
     
     const agents = await this.prisma.user.findMany({
-      where: { role: { in: [UserRole.SUPPORT_AGENT, UserRole.STAFF_MANAGER] } },
+      where: { role: { in: [UserRole.SUPPORT_AGENT, UserRole.Department_Head] } },
       select: { id: true, firstName: true, lastName: true, email: true, role: true }
     })
 
@@ -274,7 +274,7 @@ export class ReportsService {
   async exportDashboardData(format: string, userId: string, userRole: UserRole) {
     const dashboardData = {
       tickets: await this.getTicketSummary({}),
-      agents: await this.prisma.user.count({ where: { role: { in: [UserRole.SUPPORT_AGENT, UserRole.STAFF_MANAGER] } } }),
+      agents: await this.prisma.user.count({ where: { role: { in: [UserRole.SUPPORT_AGENT, UserRole.Department_Head] } } }),
       departments: await this.prisma.department.count()
     }
 

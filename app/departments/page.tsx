@@ -1,5 +1,5 @@
-import { DashboardLayout } from "@/components/dashboard-layout"
-import { DepartmentManagement } from "@/components/department-management"
+import { DashboardLayout } from "@/app/components/dashboard-layout"
+import { DepartmentManagement } from "@/app/components/department-management"
 
 export default function DepartmentsPage() {
   return (

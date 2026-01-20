@@ -28,55 +28,61 @@ export default function VoiceboxSubmitPage() {
   const [staffInvolved, setStaffInvolved] = useState("");
   const [desiredAction, setDesiredAction] = useState("");
   const [priority, setPriority] = useState("normal");
+  const [receiver, setReceiver] = useState<'user' | 'department_head' | 'commissioner'>('user');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true); setError("");
-    try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['authorization'] = `Bearer ${token}`;
-      const body = {
-        feedbackType,
-        identityType,
-        anonymous,
-        subject,
-        description,
-        incidentAt: incidentAt || undefined,
-        location: location || undefined,
-        staffInvolved: staffInvolved || undefined,
-        desiredAction: desiredAction || undefined,
-        priority,
-        submitterId: submitter?.sub,
-        fullName: anonymous ? undefined : (fullName || submitter?.name),
-        contact: anonymous ? undefined : (contact || submitter?.email),
-        officeOrUnit: anonymous ? undefined : officeOrUnit,
-        address: anonymous ? undefined : (identityType === 'external' ? address : undefined),
-      };
-      const r = await fetch('/api/voicebox', { method: 'POST', headers, body: JSON.stringify(body) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d?.error || 'Failed to submit');
-      router.replace('/voicebox');
-    } catch (e:any) {
-      setError(e?.message || 'Failed');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+const onSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setSubmitting(true); setError("");
+  try {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("accessToken") ||
+          localStorage.getItem("jwt") ||
+          localStorage.getItem("token")
+        : null;
+
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["authorization"] = `Bearer ${token}`;
+
+    const body = {
+      type: String(feedbackType).toUpperCase(),   // COMPLAINT | SUGGESTION | COMPLIMENT
+      message: subject ? `${subject}\n\n${description}` : description,
+      anonymous,
+      departmentId: undefined,                    // supply a UUID if you target a department
+      recipientUserId: undefined,                 // supply a UUID if sending to a specific user
+    };
+    console.log()
+
+    const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/submissions`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+    console.log("thisi is r",r)
+    const d = await r.json().catch(() => ({}));
+    console.log("thisi is d",d)
+    if (!r.ok) throw new Error(d?.message || d?.error || "Failed to submit");
+    router.replace("/voicebox");
+  } catch (e: any) {
+    setError(e?.message || "Failed");
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-2">New Feedback</h1>
-      <p className="text-sm text-gray-600 mb-4">Submit a Complaint, Suggestion, or Compliment</p>
+      <h1 className="text-2xl font-bold mb-4">አስተያየትና ጥቆማ ይስጡ</h1>
 
       {error && <div className="text-sm text-red-700 mb-3">{error}</div>}
 
       <form onSubmit={onSubmit} className="space-y-4 max-w-3xl">
         {/* Step 1: Feedback Type */}
         <div>
-          <div className="font-semibold mb-1">Feedback Type</div>
+          <div className="font-semibold mb-1">የግብረ መልስ አይነት</div>
           <div className="flex gap-4">
             {['complaint','suggestion','compliment'].map(t => (
               <label key={t} className="flex items-center gap-2">
@@ -132,11 +138,16 @@ export default function VoiceboxSubmitPage() {
             <input className="border rounded p-2" placeholder="Location / Office Involved" value={location} onChange={e=>setLocation(e.target.value)} />
             <input className="border rounded p-2" placeholder="Staff Involved (if any)" value={staffInvolved} onChange={e=>setStaffInvolved(e.target.value)} />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <input className="border rounded p-2" placeholder="Desired Action" value={desiredAction} onChange={e=>setDesiredAction(e.target.value)} />
             <select className="border rounded p-2" value={priority} onChange={e=>setPriority(e.target.value)}>
               <option value="normal">Normal Priority</option>
               <option value="high">High Priority</option>
+            </select>
+            <select className="border rounded p-2" value={receiver} onChange={e=>setReceiver(e.target.value as any)}>
+              <option value="user">User</option>
+              <option value="department_head">Department Head</option>
+              <option value="commissioner">Commissioner</option>
             </select>
           </div>
         </div>

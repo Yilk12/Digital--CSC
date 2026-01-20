@@ -4,150 +4,107 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 interface DriverFormData {
-  firstName: string
-  lastName: string
   employeeId: string
-  email: string
-  phone: string
-  address: string
   dateOfBirth: string
+  address: string
   licenseNumber: string
   licenseClass: string
   licenseExpiry: string
   licenseIssuedBy: string
-  department: string
-  position: string
-  hireDate: string
-  status: string
-  emergencyContact: string
-  emergencyPhone: string
-  medicalClearance: string
-  backgroundCheck: string
-  trainingCompleted: string[]
+  emergencyContactName: string
+  emergencyContactPhone: string
   notes: string
-  carAssignment: string
-  carCategory: string
-  carModel: string
-  carMake: string
-  carYear: string
-  carLicensePlate: string
 }
 
 export default function DriverRegisterPage() {
   const [formData, setFormData] = useState<DriverFormData>({
-    firstName: '',
-    lastName: '',
     employeeId: '',
-    email: '',
-    phone: '',
-    address: '',
     dateOfBirth: '',
+    address: '',
     licenseNumber: '',
     licenseClass: '',
     licenseExpiry: '',
     licenseIssuedBy: '',
-    department: '',
-    position: '',
-    hireDate: '',
-    status: 'active',
-    emergencyContact: '',
-    emergencyPhone: '',
-    medicalClearance: '',
-    backgroundCheck: '',
-    trainingCompleted: [],
+    emergencyContactName: '',
+    emergencyContactPhone: '',
     notes: '',
-    carAssignment: '',
-    carCategory: '',
-    carModel: '',
-    carMake: '',
-    carYear: '',
-    carLicensePlate: ''
   })
 
-  const [selectedTraining, setSelectedTraining] = useState<string[]>([])
+  // Car assignment UI state
+  const [carAssignment, setCarAssignment] = useState<'none' | 'new' | 'used'>('none')
+  const [selectedCarId, setSelectedCarId] = useState<string>('')
+  const [licenceImageFile, setLicenceImageFile] = useState<File | null>(null)
 
-  // Driver documents state
-  interface DriverDocumentItem {
-    id: string
-    name: string
-    docType: string
-    uploadedAt: string
-    url?: string
-    size?: number
-    mimeType?: string
-  }
+  // Vehicle lists from backend
+  type VehicleItem = { id: string; plate: string; make?: string | null; model?: string | null; year?: number | null; type?: 'NEW'|'USED' }
+  const [newCars, setNewCars] = useState<VehicleItem[]>([])
+  const [usedCars, setUsedCars] = useState<VehicleItem[]>([])
+  const [vehiclesLoading, setVehiclesLoading] = useState(false)
+  const [vehiclesError, setVehiclesError] = useState<string>('')
 
-  const [docs, setDocs] = useState<DriverDocumentItem[]>([])
-  const [uploadingType, setUploadingType] = useState<string>('')
+  // Load vehicles on mount
+  useEffect(() => {
+    const loadVehicles = async () => {
+      try {
+        setVehiclesLoading(true)
+        setVehiclesError('')
+        const token = localStorage.getItem('accessToken') || ''
+        const base = process.env.NEXT_PUBLIC_API_URL || ''
+        const [newRes, usedRes] = await Promise.all([
+          fetch(`${base}/api/fleet/vehicles?type=NEW`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${base}/api/fleet/vehicles?type=USED`, { headers: { Authorization: `Bearer ${token}` } }),
+        ])
+        if (!newRes.ok || !usedRes.ok) throw new Error('Failed to load vehicles')
+        const [newData, usedData] = await Promise.all([newRes.json(), usedRes.json()])
+        // The service returns findMany directly; ensure arrays
+        setNewCars(Array.isArray(newData) ? newData : Array.isArray(newData?.data) ? newData.data : [])
+        setUsedCars(Array.isArray(usedData) ? usedData : Array.isArray(usedData?.data) ? usedData.data : [])
+      } catch (e: any) {
+        setVehiclesError(e?.message || 'Could not load vehicles')
+        setNewCars([])
+        setUsedCars([])
+      } finally {
+        setVehiclesLoading(false)
+      }
+    }
+    loadVehicles()
+  }, [])
+
+  // Users from admin list to select a driver
+  type DriverUser = { id: string; firstName?: string; lastName?: string; name?: string; email?: string; role?: string }
+  const [drivers, setDrivers] = useState<DriverUser[]>([])
+  const [driversLoading, setDriversLoading] = useState(false)
+  const [selectedDriverId, setSelectedDriverId] = useState<string>("")
 
   useEffect(() => {
-    const id = formData.employeeId?.trim()
-    if (id) {
-      loadDocs(id)
-    } else {
-      setDocs([])
+    // Load users with Driver role from admin list to populate select
+    const loadDrivers = async () => {
+      try {
+        setDriversLoading(true)
+        const res = await fetch(`/api/users?page=1&pageSize=200&role=Driver&sort=name:asc`)
+        const data = await res.json().catch(() => ({}))
+        const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : []
+        setDrivers(items)
+      } catch {
+        setDrivers([])
+      } finally {
+        setDriversLoading(false)
+      }
     }
-  }, [formData.employeeId])
+    loadDrivers()
+  }, [])
 
-  async function loadDocs(driverId: string) {
+  // Prefill from query parameter when navigating from Fleet Manager
+  useEffect(() => {
+    if (typeof window === 'undefined') return
     try {
-      const res = await fetch(`/api/fleet/drivers/${encodeURIComponent(driverId)}/documents`)
-      const data = await res.json()
-      setDocs(Array.isArray(data.items) ? data.items : [])
-    } catch (e) {
-      // ignore in demo
-    }
-  }
-
-  async function uploadDoc(docType: string, file: File) {
-    if (!formData.employeeId?.trim()) {
-      alert('Please enter Employee ID before uploading documents.')
-      return
-    }
-    const driverId = formData.employeeId.trim()
-    try {
-      setUploadingType(docType)
-      const fd = new FormData()
-      fd.append('docType', docType)
-      fd.append('file', file)
-      const res = await fetch(`/api/fleet/drivers/${encodeURIComponent(driverId)}/documents`, {
-        method: 'POST',
-        body: fd,
-      })
-      if (!res.ok) throw new Error('Upload failed')
-      await loadDocs(driverId)
-    } catch (e: any) {
-      alert(e?.message || 'Upload failed')
-    } finally {
-      setUploadingType('')
-    }
-  }
-
-  const trainingOptions = [
-    'Defensive Driving',
-    'Vehicle Safety',
-    'Emergency Procedures',
-    'Fleet Management',
-    'Customer Service',
-    'Route Planning',
-    'Fuel Efficiency',
-    'Vehicle Maintenance'
-  ]
-
-  // Mock data for cars
-  const newCars = [
-    { id: '1', make: 'Toyota', model: 'Camry', year: '2024', licensePlate: 'NEW-001' },
-    { id: '2', make: 'Honda', model: 'Civic', year: '2024', licensePlate: 'NEW-002' },
-    { id: '3', make: 'Ford', model: 'Focus', year: '2024', licensePlate: 'NEW-003' },
-    { id: '4', make: 'Nissan', model: 'Altima', year: '2024', licensePlate: 'NEW-004' }
-  ]
-
-  const usedCars = [
-    { id: '5', make: 'Toyota', model: 'Corolla', year: '2022', licensePlate: 'USED-001' },
-    { id: '6', make: 'Honda', model: 'Accord', year: '2021', licensePlate: 'USED-002' },
-    { id: '7', make: 'Ford', model: 'Escape', year: '2020', licensePlate: 'USED-003' },
-    { id: '8', make: 'Chevrolet', model: 'Malibu', year: '2023', licensePlate: 'USED-004' }
-  ]
+      const sp = new URLSearchParams(window.location.search)
+      const driverId = sp.get('driverId') || ''
+      if (driverId) {
+        setSelectedDriverId(driverId)
+      }
+    } catch {}
+  }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -157,100 +114,89 @@ export default function DriverRegisterPage() {
     }))
   }
 
-  const handleTrainingChange = (training: string) => {
-    const updatedTraining = selectedTraining.includes(training)
-      ? selectedTraining.filter(t => t !== training)
-      : [...selectedTraining, training]
-    
-    setSelectedTraining(updatedTraining)
-    setFormData(prev => ({
-      ...prev,
-      trainingCompleted: updatedTraining
-    }))
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Driver Registration Data:', formData)
     
-    // Prepare car assignment summary
-    let carSummary = ''
-    if (formData.carAssignment === 'assigned' && formData.carModel) {
-      const selectedCar = formData.carCategory === 'new' 
-        ? newCars.find(car => car.id === formData.carModel)
-        : usedCars.find(car => car.id === formData.carModel)
+    try {
+      if (!selectedDriverId) {
+        alert('Please select a driver user to continue.')
+        return
+      }
+      // Determine vehicleId from assignment
+      const computedVehicleId = carAssignment === 'none' ? null : (selectedCarId || null)
+
+      // Optional: upload licence image first if provided
+      let licenceCertificateUrl: string | null = null
+      if (licenceImageFile) {
+        const fd = new FormData()
+        fd.append('file', licenceImageFile)
+        const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/upload/image`, {
+          method: 'POST',
+          body: fd,
+        })
+        if (!uploadRes.ok) throw new Error('Failed to upload licence image')
+        const uploadJson = await uploadRes.json().catch(()=> ({}))
+        licenceCertificateUrl = uploadJson?.url || uploadJson?.path || uploadJson?.data?.url || null
+      }
+      // Prepare the data for backend
+      const submitData = {
+        empId: formData.employeeId,
+        dateOfBirth: formData.dateOfBirth,
+        address: formData.address || null,
+        licenceNumber: formData.licenseNumber,
+        licenceClass: formData.licenseClass,
+        licenceExpiredDate: formData.licenseExpiry,
+        issuedBy: formData.licenseIssuedBy,
+        vehicleId: computedVehicleId,
+        emergencyContactName: formData.emergencyContactName,
+        emergencyContactPhone: formData.emergencyContactPhone,
+        additionalInformation: formData.notes || null,
+        licenceCertificate: licenceCertificateUrl,
+      }
+
+      // Send to backend
+      const token = localStorage.getItem('accessToken') || ''
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/fleet/driver-details/${encodeURIComponent(selectedDriverId)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(submitData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to register driver')
+      }
+
+      await response.json().catch(()=>null)
+      alert('Driver details saved successfully!')
       
-      carSummary = `\n\nCar Assignment: ${formData.carCategory === 'new' ? 'New' : 'Used'} Car - ${selectedCar?.make} ${selectedCar?.model} ${selectedCar?.year} (${selectedCar?.licensePlate})`
-    } else if (formData.carAssignment === 'not_assigned') {
-      carSummary = '\n\nCar Assignment: No car assigned'
+      // Reset form
+      handleReset()
+      
+    } catch (error) {
+      console.error('Error registering driver:', error)
+      alert('Failed to register driver. Please try again.')
     }
-    
-    alert(`Driver registered successfully!${carSummary}`)
-    
-    // Reset form
-    setFormData({
-      firstName: '',
-      lastName: '',
-      employeeId: '',
-      email: '',
-      phone: '',
-      address: '',
-      dateOfBirth: '',
-      licenseNumber: '',
-      licenseClass: '',
-      licenseExpiry: '',
-      licenseIssuedBy: '',
-      department: '',
-      position: '',
-      hireDate: '',
-      status: 'active',
-      emergencyContact: '',
-      emergencyPhone: '',
-      medicalClearance: '',
-      backgroundCheck: '',
-      trainingCompleted: [],
-      notes: '',
-      carAssignment: '',
-      carCategory: '',
-      carModel: '',
-      carMake: '',
-      carYear: '',
-      carLicensePlate: ''
-    })
-    setSelectedTraining([])
   }
 
   const handleReset = () => {
     setFormData({
-      firstName: '',
-      lastName: '',
       employeeId: '',
-      email: '',
-      phone: '',
       address: '',
       dateOfBirth: '',
       licenseNumber: '',
       licenseClass: '',
       licenseExpiry: '',
       licenseIssuedBy: '',
-      department: '',
-      position: '',
-      hireDate: '',
-      status: 'active',
-      emergencyContact: '',
-      emergencyPhone: '',
-      medicalClearance: '',
-      backgroundCheck: '',
-      trainingCompleted: [],
+      emergencyContactName: '',
+      emergencyContactPhone: '',
       notes: '',
-      carAssignment: '',
-      carCategory: '',
-      carModel: '',
-      carMake: '',
-      carYear: '',
-      carLicensePlate: ''
     })
-    setSelectedTraining([])
+    setCarAssignment('none')
+    setSelectedCarId('')
+    setLicenceImageFile(null)
   }
 
   return (
@@ -258,10 +204,7 @@ export default function DriverRegisterPage() {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Driver Registration</h1>
-            <p className="text-gray-600 mt-2">Register new drivers for fleet operations</p>
-          </div>
+          <div />
           <Link 
             href="/fleet/manager" 
             className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
@@ -271,47 +214,19 @@ export default function DriverRegisterPage() {
         </div>
       </div>
 
-      {/* Registration Form */}
+      {/* Driver Selection and Registration Form */}
       <div className="bg-white rounded-lg shadow border">
         <div className="px-6 py-4 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">Driver Information</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Driver Details</h2>
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+         
+
           {/* Personal Information */}
           <div className="border-b pb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  First Name *
-                </label>
-                <input
-                  type="text"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter first name"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Last Name *
-                </label>
-                <input
-                  type="text"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter last name"
-                  required
-                />
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Employee ID *
@@ -341,45 +256,15 @@ export default function DriverRegisterPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address *
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="driver@company.com"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="+1 (555) 123-4567"
-                  required
-                />
-              </div>
-
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Address *
                 </label>
-                <textarea
+                <input
+                  type="text"
                   name="address"
                   value={formData.address}
                   onChange={handleInputChange}
-                  rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter full address"
                   required
@@ -458,218 +343,47 @@ export default function DriverRegisterPage() {
             </div>
           </div>
 
-          {/* Employment Information */}
-          <div className="border-b pb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Employment Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Department *
-                </label>
-                <select
-                  name="department"
-                  value={formData.department}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">Select department</option>
-                  <option value="sales">Sales</option>
-                  <option value="marketing">Marketing</option>
-                  <option value="operations">Operations</option>
-                  <option value="logistics">Logistics</option>
-                  <option value="maintenance">Maintenance</option>
-                  <option value="commissioner_office">Commissioner Office</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Position *
-                </label>
-                <input
-                  type="text"
-                  name="position"
-                  value={formData.position}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g., Sales Representative"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Hire Date *
-                </label>
-                <input
-                  type="date"
-                  name="hireDate"
-                  value={formData.hireDate}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status *
-                </label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="suspended">Suspended</option>
-                  <option value="probation">Probation</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
           {/* Car Assignment */}
           <div className="border-b pb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Car Assignment</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Car Assignment *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Assignment *</label>
                 <select
-                  name="carAssignment"
-                  value={formData.carAssignment}
-                  onChange={handleInputChange}
+                  value={carAssignment}
+                  onChange={(e)=>{
+                    const v = e.target.value as 'none'|'new'|'used'
+                    setCarAssignment(v)
+                    if (v === 'none') setSelectedCarId('')
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                 >
-                  <option value="">Select car assignment</option>
-                  <option value="assigned">Assign Car</option>
-                  <option value="not_assigned">No Car Assignment</option>
+                  <option value="none">No Car Assignment</option>
+                  <option value="new">New Car</option>
+                  <option value="used">Used Car</option>
                 </select>
               </div>
 
-              {formData.carAssignment === 'assigned' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Car Category *
-                    </label>
-                    <select
-                      name="carCategory"
-                      value={formData.carCategory}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required={formData.carAssignment === 'assigned'}
-                    >
-                      <option value="">Select car category</option>
-                      <option value="new">New Car (with model number)</option>
-                      <option value="used">Used Car (no model number)</option>
-                    </select>
-                  </div>
-
-                  {formData.carCategory === 'new' && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Select New Car *
-                        </label>
-                        <select
-                          name="carModel"
-                          value={formData.carModel}
-                          onChange={(e) => {
-                            const selectedCar = newCars.find(car => car.id === e.target.value)
-                            setFormData(prev => ({
-                              ...prev,
-                              carModel: e.target.value,
-                              carMake: selectedCar?.make || '',
-                              carYear: selectedCar?.year || '',
-                              carLicensePlate: selectedCar?.licensePlate || ''
-                            }))
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          required={formData.carCategory === 'new'}
-                        >
-                          <option value="">Select new car</option>
-                          {newCars.map(car => (
-                            <option key={car.id} value={car.id}>
-                              {car.make} {car.model} {car.year} - {car.licensePlate}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </>
-                  )}
-
-                  {formData.carCategory === 'used' && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Select Used Car *
-                        </label>
-                        <select
-                          name="carModel"
-                          value={formData.carModel}
-                          onChange={(e) => {
-                            const selectedCar = usedCars.find(car => car.id === e.target.value)
-                            setFormData(prev => ({
-                              ...prev,
-                              carModel: e.target.value,
-                              carMake: selectedCar?.make || '',
-                              carYear: selectedCar?.year || '',
-                              carLicensePlate: selectedCar?.licensePlate || ''
-                            }))
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          required={formData.carCategory === 'used'}
-                        >
-                          <option value="">Select used car</option>
-                          {usedCars.map(car => (
-                            <option key={car.id} value={car.id}>
-                              {car.make} {car.model} {car.year} - {car.licensePlate}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </>
-                  )}
-
-                  {formData.carModel && (
-                    <div className="md:col-span-2">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900 mb-2">Selected Car Details:</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-600">Make:</span>
-                            <span className="ml-2 font-medium">{formData.carMake}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-600">Model:</span>
-                            <span className="ml-2 font-medium">
-                              {formData.carCategory === 'new' 
-                                ? newCars.find(car => car.id === formData.carModel)?.model 
-                                : usedCars.find(car => car.id === formData.carModel)?.model
-                              }
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-gray-600">Year:</span>
-                            <span className="ml-2 font-medium">{formData.carYear}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-600">License Plate:</span>
-                            <span className="ml-2 font-medium">{formData.carLicensePlate}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
+              {carAssignment !== 'none' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {carAssignment === 'new' ? 'Select New Car *' : 'Select Used Car *'}
+                  </label>
+                  <select
+                    value={selectedCarId}
+                    onChange={(e)=> setSelectedCarId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">{carAssignment === 'new' ? 'Select new car' : 'Select used car'}</option>
+                    {(carAssignment === 'new' ? newCars : usedCars).map(car => (
+                      <option key={car.id} value={car.id}>
+                        {car.make} {car.model} {car.year} - {car.plate}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
           </div>
@@ -684,8 +398,8 @@ export default function DriverRegisterPage() {
                 </label>
                 <input
                   type="text"
-                  name="emergencyContact"
-                  value={formData.emergencyContact}
+                  name="emergencyContactName"
+                  value={formData.emergencyContactName}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter emergency contact name"
@@ -699,8 +413,8 @@ export default function DriverRegisterPage() {
                 </label>
                 <input
                   type="tel"
-                  name="emergencyPhone"
-                  value={formData.emergencyPhone}
+                  name="emergencyContactPhone"
+                  value={formData.emergencyContactPhone}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="+1 (555) 123-4567"
@@ -710,182 +424,69 @@ export default function DriverRegisterPage() {
             </div>
           </div>
 
-          {/* Compliance & Training */}
-          <div className="border-b pb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Compliance & Training</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Medical Clearance *
-                </label>
-                <select
-                  name="medicalClearance"
-                  value={formData.medicalClearance}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">Select status</option>
-                  <option value="valid">Valid</option>
-                  <option value="expired">Expired</option>
-                  <option value="pending">Pending</option>
-                  <option value="not_required">Not Required</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Background Check *
-                </label>
-                <select
-                  name="backgroundCheck"
-                  value={formData.backgroundCheck}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">Select status</option>
-                  <option value="passed">Passed</option>
-                  <option value="failed">Failed</option>
-                  <option value="pending">Pending</option>
-                  <option value="not_required">Not Required</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Training Completed
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {trainingOptions.map(training => (
-                  <label key={training} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedTraining.includes(training)}
-                      onChange={() => handleTrainingChange(training)}
-                      className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">{training}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-
           {/* Additional Information */}
           <div className="border-b pb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Additional Information</h3>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
+                Notes (Optional)
               </label>
               <textarea
                 name="notes"
                 value={formData.notes}
                 onChange={handleInputChange}
-                rows={4}
+                rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Additional notes, special requirements, or comments..."
+                placeholder="Any additional information about the driver..."
               />
             </div>
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Licence Image (Optional)</label>
+            
+            {/* File input with hidden native input and custom styling */}
+            <div className="flex items-center justify-center w-full">
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <svg className="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+                  </svg>
+                  <p className="mb-2 text-sm text-gray-500">
+                    <span className="font-semibold">Click to upload</span> or drag and drop
+                  </p>
+                  <p className="text-xs text-gray-500">PNG, JPG, JPEG (MAX. 5MB)</p>
+                </div>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => setLicenceImageFile(e.target.files?.[0] || null)}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Preview section (optional) */}
+            {licenceImageFile && (
+              <div className="mt-3">
+                <p className="text-sm text-gray-600 mb-2">Preview:</p>
+                <div className="relative w-32 h-32 border rounded-lg overflow-hidden">
+                  <img 
+                    src={URL.createObjectURL(licenceImageFile)} 
+                    alt="Licence preview" 
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setLicenceImageFile(null)}
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs text-gray-500 mt-1">Upload a photo/scan of the driver's licence.</p>
           </div>
-
-          {/* Driver Documents (Attachments) */}
-          <div className="border-b pb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Driver Documents (Attachments)</h3>
-            <p className="text-sm text-gray-600 mb-4">Attach scanned documents. Please enter Employee ID first to link uploads.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Educational paper */}
-              <div className="border rounded-lg p-4">
-                <div className="font-medium mb-2">Educational paper</div>
-                <input
-                  type="file"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) uploadDoc('educational_paper', f)
-                    e.currentTarget.value = ''
-                  }}
-                  accept="application/pdf,image/*"
-                  className="block w-full text-sm"
-                  disabled={!formData.employeeId || uploadingType==='educational_paper'}
-                />
-                <div className="text-xs text-gray-500 mt-1">PDF or images</div>
-              </div>
-
-              {/* License certificate */}
-              <div className="border rounded-lg p-4">
-                <div className="font-medium mb-2">License certificate</div>
-                <input
-                  type="file"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) uploadDoc('license_certificate', f)
-                    e.currentTarget.value = ''
-                  }}
-                  accept="application/pdf,image/*"
-                  className="block w-full text-sm"
-                  disabled={!formData.employeeId || uploadingType==='license_certificate'}
-                />
-                <div className="text-xs text-gray-500 mt-1">PDF or images</div>
-              </div>
-
-              {/* Any documents */}
-              <div className="border rounded-lg p-4">
-                <div className="font-medium mb-2">Any documents</div>
-                <input
-                  type="file"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) uploadDoc('other_documents', f)
-                    e.currentTarget.value = ''
-                  }}
-                  accept="application/pdf,image/*"
-                  className="block w-full text-sm"
-                  disabled={!formData.employeeId || uploadingType==='other_documents'}
-                />
-                <div className="text-xs text-gray-500 mt-1">PDF or images</div>
-              </div>
-
-              {/* Agreement paper */}
-              <div className="border rounded-lg p-4">
-                <div className="font-medium mb-2">Agreement paper</div>
-                <input
-                  type="file"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) uploadDoc('agreement_paper', f)
-                    e.currentTarget.value = ''
-                  }}
-                  accept="application/pdf,image/*"
-                  className="block w-full text-sm"
-                  disabled={!formData.employeeId || uploadingType==='agreement_paper'}
-                />
-                <div className="text-xs text-gray-500 mt-1">PDF or images</div>
-              </div>
-            </div>
-
-            {/* Uploaded documents list */}
-            <div className="mt-6">
-              <h4 className="font-medium text-gray-900 mb-2">Uploaded Documents</h4>
-              {(!docs || docs.length === 0) ? (
-                <div className="text-sm text-gray-500">No documents uploaded yet.</div>
-              ) : (
-                <ul className="divide-y">
-                  {docs.map(d => (
-                    <li key={d.id} className="py-2 text-sm flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{d.name}</div>
-                        <div className="text-gray-500">{d.docType} • {new Date(d.uploadedAt).toLocaleString()}</div>
-                      </div>
-                      {d.url && (
-                        <a href={d.url} className="text-blue-600 hover:underline" target="_blank" rel="noreferrer">View</a>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
           </div>
 
           {/* Form Actions */}
@@ -901,35 +502,10 @@ export default function DriverRegisterPage() {
               type="submit"
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Register Driver
+              Save Details
             </button>
           </div>
         </form>
-      </div>
-
-      {/* Quick Reference */}
-      <div className="mt-8 bg-blue-50 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-blue-900 mb-3">Quick Reference</h3>
-        <div className="text-sm text-blue-800 space-y-4">
-          <div>
-            <p><strong>License Classes:</strong></p>
-            <ul className="list-disc list-inside ml-4 space-y-1">
-              <li><strong>Class A:</strong> Commercial vehicles over 26,000 lbs</li>
-              <li><strong>Class B:</strong> Commercial vehicles 26,000 lbs or less</li>
-              <li><strong>Class C:</strong> Commercial vehicles under 26,000 lbs with passengers</li>
-              <li><strong>Class D:</strong> Regular passenger vehicles</li>
-              <li><strong>Class M:</strong> Motorcycles and motorized bicycles</li>
-            </ul>
-          </div>
-          <div>
-            <p><strong>Car Assignment:</strong></p>
-            <ul className="list-disc list-inside ml-4 space-y-1">
-              <li><strong>New Cars:</strong> Latest model vehicles with model numbers (2024 models)</li>
-              <li><strong>Used Cars:</strong> Previously owned vehicles without model numbers (2020-2023 models)</li>
-              <li><strong>No Assignment:</strong> Driver will not be assigned a vehicle initially</li>
-            </ul>
-          </div>
-        </div>
       </div>
     </div>
   )

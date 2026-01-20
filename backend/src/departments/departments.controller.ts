@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Delete, UseGuards, Query } from "@nestjs/common"
+import { Controller, Get, Post, Patch, Param, Delete, UseGuards, Query, Body } from "@nestjs/common"
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from "@nestjs/swagger"
 import { DepartmentsService } from "./departments.service"
 import { CreateDepartmentDto } from "./dto/create-department.dto"
@@ -17,9 +17,9 @@ export class DepartmentsController {
 
   @ApiOperation({ summary: "Create a new department" })
   @ApiResponse({ status: 201, description: "Department created successfully" })
-  @Roles(UserRole.ADMIN, UserRole.GENERAL_DIRECTOR)
+  @Roles(UserRole.ADMIN, UserRole.Commissioner)
   @Post()
-  create(createDto: CreateDepartmentDto) {
+  create(@Body() createDto: CreateDepartmentDto) {
     return this.departmentsService.create(createDto)
   }
 
@@ -27,32 +27,45 @@ export class DepartmentsController {
   @ApiQuery({ name: "page", required: false, type: Number })
   @ApiQuery({ name: "limit", required: false, type: Number })
   @ApiQuery({ name: "search", required: false, type: String })
-  @Roles(UserRole.ADMIN, UserRole.GENERAL_DIRECTOR, UserRole.STAFF_MANAGER, UserRole.SUPPORT_AGENT)
-  @Get()
+@Roles(
+  UserRole.ADMIN,
+  UserRole.Commissioner,
+  UserRole.Department_Head,
+  UserRole.SUPPORT_AGENT,
+  UserRole.END_USER,
+  UserRole.Driver,
+  UserRole.Fleet_Manager,
+  UserRole.Maintenace_Team,
+  UserRole.Team_Leader,
+  UserRole.Announcement_Creator,
+  UserRole.Finance_Department
+)  @Get()
   findAll(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
   ) {
+      console.log("thsi is the user that try to access",UserRole)
+
     return this.departmentsService.findAll(page, limit, search)
   }
 
   @ApiOperation({ summary: 'Get department by ID' })
-  @Roles(UserRole.ADMIN, UserRole.GENERAL_DIRECTOR, UserRole.STAFF_MANAGER, UserRole.SUPPORT_AGENT)
+  @Roles(UserRole.ADMIN, UserRole.Commissioner, UserRole.Department_Head, UserRole.SUPPORT_AGENT)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.departmentsService.findById(id);
   }
 
   @ApiOperation({ summary: "Update department" })
-  @Roles(UserRole.ADMIN, UserRole.GENERAL_DIRECTOR)
+  @Roles(UserRole.ADMIN, UserRole.Commissioner)
   @Patch(":id")
-  update(@Param('id') id: string, updateDto: UpdateDepartmentDto) {
+  update(@Param('id') id: string, @Body() updateDto: UpdateDepartmentDto) {
     return this.departmentsService.update(id, updateDto)
   }
 
   @ApiOperation({ summary: 'Deactivate department' })
-  @Roles(UserRole.ADMIN, UserRole.GENERAL_DIRECTOR)
+  @Roles(UserRole.ADMIN, UserRole.Commissioner)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.departmentsService.deactivate(id);

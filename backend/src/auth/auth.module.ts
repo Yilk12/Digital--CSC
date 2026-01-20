@@ -7,6 +7,7 @@ import { AuthController } from "./auth.controller"
 import { JwtStrategy } from "./strategies/jwt.strategy"
 import { LocalStrategy } from "./strategies/local.strategy"
 import { UsersModule } from "../users/users.module"
+import { PasswordPolicyModule } from "../password-policy/password-policy.module"
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { UsersModule } from "../users/users.module"
       }),
       inject: [ConfigService],
     }),
+    PasswordPolicyModule,
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy],
   controllers: [AuthController],

@@ -1,12 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
 import { getCurrentUserRoles, decodeJwt } from "@/app/lib/auth"
-import { DEPARTMENTS } from "@/lib/fleet"
+import { DEPARTMENTS } from "@/backend/lib/fleet"
 
 export default function FleetDepartmentPage() {
-  const search = useSearchParams()
   const roles = getCurrentUserRoles().map(r => r.toLowerCase())
   const canDeptApprove = roles.includes("department_head") || roles.includes("manager") || roles.includes("admin")
   const isDeptHead = roles.includes("department_head") || roles.includes("admin")
@@ -22,7 +20,9 @@ export default function FleetDepartmentPage() {
 
   // Initialize from URL ?dept=Finance if provided
   useEffect(() => {
-    const d = search?.get('dept') || ''
+    if (typeof window === 'undefined') return
+    const sp = new URLSearchParams(window.location.search)
+    const d = sp.get('dept') || ''
     if (d) {
       setDeptFilter(d)
       // if matches a known department, also set myDept so restrict toggle can apply
@@ -116,7 +116,7 @@ export default function FleetDepartmentPage() {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50 p-6">
       <h1 className="text-2xl font-bold">Department – Requests Approval</h1>
       <div className="text-sm text-gray-600">Use this page for both users (confirm) and department heads (approve/reject).</div>
 

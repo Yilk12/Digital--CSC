@@ -63,7 +63,7 @@ export default function AdminDashboardPage() {
         <div className="p-4 text-sm text-gray-600">Loading...</div>
       ) : allowed === false ? null : (
         <>
-          <h1 className="text-2xl font-bold">INTEGRATED CSC DIGITAL SOLUTION – Admin</h1>
+          <h1 className="text-2xl font-bold"><span style={{ color: '#000000' }}>INTEGRATED CSC DIGITAL SOLUTION</span> – Admin</h1>
           <div className="text-sm text-gray-600">Manage all modules in one place.</div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
