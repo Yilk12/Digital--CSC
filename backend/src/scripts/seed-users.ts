@@ -10,9 +10,9 @@ async function upsertUser(params: {
   role: UserRole
   userType: UserType
   password: string
-  department?: string | null
+  departmentId?: string | null
 }) {
-  const { email, firstName, lastName, role, userType, password, department } = params
+  const { email, firstName, lastName, role, userType, password, departmentId } = params
   const passwordHash = await bcrypt.hash(password, 10)
   return prisma.user.upsert({
     where: { email },
@@ -21,7 +21,7 @@ async function upsertUser(params: {
       lastName,
       role,
       userType,
-      departmentId: department ?? null,
+      departmentId: departmentId ?? null,
       password: passwordHash,
       isActive: true,
     },
@@ -31,7 +31,7 @@ async function upsertUser(params: {
       lastName,
       role,
       userType,
-      departmentId: department ?? null,
+      departmentId: departmentId ?? null,
       password: passwordHash,
       isActive: true,
     },
@@ -66,13 +66,13 @@ async function main() {
 
   const users = [
     {
-      email: "admin@example.com",
+      email: "admin@fcsc.com",
       firstName: "System",
       lastName: "Admin",
       role: UserRole.ADMIN,
       userType: UserType.INTERNAL,
       department: "Management",
-      password: "Password123!",
+      password: "admin@1234",
     },
     {
       email: "commissioner@example.com",
@@ -223,7 +223,19 @@ async function main() {
   ]
 
   for (const u of users) {
-    const saved = await upsertUser(u)
+    let departmentId: string | null = null
+
+    if (u.department) {
+      const dept = await ensureDepartment({ name: u.department })
+      departmentId = dept.id
+    }
+
+    const { department, ...rest } = u as any
+
+    const saved = await upsertUser({
+      ...(rest as Omit<(typeof users)[number], "department">),
+      departmentId,
+    })
     console.log(`Upserted: ${saved.email} (role=${saved.role}, type=${saved.userType})`)
   }
 

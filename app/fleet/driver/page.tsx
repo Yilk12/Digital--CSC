@@ -82,6 +82,8 @@ export default function DriverPage() {
   const [savingMetrics, setSavingMetrics] = useState(false)
   const [driverVehicle, setDriverVehicle] = useState<Vehicle | null>(null)
   const [tripsReportRange, setTripsReportRange] = useState<'all' | 'weekly' | 'monthly' | 'yearly'>('all')
+  const [completedPage, setCompletedPage] = useState(1)
+  const completedPageSize = 10
 
   const tabs: { id: 'trips' | 'vehicle' | 'requests' | 'reports'; label: string }[] = [
     { id: 'trips', label: 'Trip Management' },
@@ -824,11 +826,25 @@ export default function DriverPage() {
     })
   }, [completedTrips, tripsReportRange])
 
-  // Total completed trips across all history (not just the current filter range)
   const totalCompletedTrips = useMemo(() => {
     if (historyTripsTotal != null) return historyTripsTotal
     return completedTrips.length
   }, [historyTripsTotal, completedTrips])
+
+  const totalCompletedPages = useMemo(() => {
+    if (filteredCompletedTrips.length === 0) return 1
+    return Math.ceil(filteredCompletedTrips.length / completedPageSize)
+  }, [filteredCompletedTrips.length, completedPageSize])
+
+  const paginatedCompletedTrips = useMemo(() => {
+    const startIndex = (completedPage - 1) * completedPageSize
+    const endIndex = startIndex + completedPageSize
+    return filteredCompletedTrips.slice(startIndex, endIndex)
+  }, [filteredCompletedTrips, completedPage, completedPageSize])
+
+  useEffect(() => {
+    setCompletedPage(1)
+  }, [tripsReportRange, filteredCompletedTrips.length])
 
   const tripsReportRangeLabel = useMemo(() => {
     if (tripsReportRange === 'all') return ''
@@ -1680,14 +1696,14 @@ export default function DriverPage() {
               <tbody>
                 {filteredCompletedTrips.length === 0 ? (
                   <tr>
-                    <td className="border px-3 py-4 text-center text-gray-500" colSpan={12}>
+                    <td className="border px-3 py-4 text-center text-gray-500" colSpan={13}>
                       ምንም የተጠናቀቀ መስክ ጉዞዎች አልተገኙም
                     </td>
                   </tr>
                 ) : (
-                  filteredCompletedTrips.map((trip, index) => (
+                  paginatedCompletedTrips.map((trip, index) => (
                     <tr key={trip.id} className="hover:bg-gray-50">
-                      <td className="border px-3 py-2 text-center align-top">{index + 1}</td>
+                      <td className="border px-3 py-2 text-center align-top">{(completedPage - 1) * completedPageSize + index + 1}</td>
                       <td className="border px-3 py-2 align-top">
                         {(trip as any).requesterName || driverName}
                         {(trip as any).requesterPhone && (
@@ -1702,13 +1718,15 @@ export default function DriverPage() {
                       <td className="border px-3 py-2 align-top">{trip.startLocation}  {trip.endLocation}</td>
                       <td className="border px-3 py-2 align-top">{trip.purpose}</td>
                       <td className="border px-3 py-2 align-top">
-                        {new Date(trip.startTime).toLocaleDateString('en-GB')}
+                        {trip.startTime ? new Date(trip.startTime).toLocaleDateString('en-GB') : '-'}
                       </td>
                       <td className="border px-3 py-2 align-top">
-                        {trip.startTime ? new Date(trip.startTime).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        }) : '-'}
+                        {trip.startTime
+                          ? new Date(trip.startTime).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '-'}
                       </td>
                       <td className="border px-3 py-2 align-top text-right">
                         {trip.kmPerLiter ?? '-'}
@@ -1720,9 +1738,9 @@ export default function DriverPage() {
                         {trip.kmDifference ?? '-'}
                       </td>
                       <td className="border px-3 py-2 align-top text-right">
-                        {trip.returnKm ?? ''}
+                        {trip.returnKm ?? '-'}
                       </td>
-                      <td className="border px-3 py-2 align-top">
+                      <td className="border px-3 py-2 align-top text-right">
                         {formatReturnDateTimeFull(trip)}
                       </td>
                       <td className="border px-3 py-2 align-top text-right">
@@ -1733,6 +1751,36 @@ export default function DriverPage() {
                 )}
               </tbody>
             </table>
+            {filteredCompletedTrips.length > 0 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t text-xs text-gray-700">
+                <div>
+                  ከ {((completedPage - 1) * completedPageSize) + 1} እስከ{' '}
+                  {Math.min(completedPage * completedPageSize, filteredCompletedTrips.length)}{' '}
+                  ድረስ መስኮች ታይተዋል  /  ጠቅላላ መስኮች: {filteredCompletedTrips.length}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="px-2 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => setCompletedPage(p => Math.max(1, p - 1))}
+                    disabled={completedPage <= 1}
+                  >
+                    የቀድሞው
+                  </button>
+                  <span>
+                    ገፅ {completedPage} / {totalCompletedPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="px-2 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => setCompletedPage(p => Math.min(totalCompletedPages, p + 1))}
+                    disabled={completedPage >= totalCompletedPages}
+                  >
+                    የሚቀጥለው
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

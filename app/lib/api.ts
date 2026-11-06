@@ -11,22 +11,55 @@ function getAuthHeader(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+// Request deduplication cache
+const pendingRequests = new Map<string, Promise<any>>()
+
 export async function apiGet<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers)
   headers.set("Content-Type", "application/json")
   const auth = getAuthHeader()
   for (const [k, v] of Object.entries(auth)) headers.set(k, v)
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    credentials: "include",
-    headers,
-    cache: "no-store",
-  })
-  if (!res.ok) {
-    throw new Error(`GET ${path} failed: ${res.status}`)
+  // Deduplicate identical in-flight requests
+  const requestKey = `GET:${path}:${JSON.stringify(init || {})}`
+  
+  if (pendingRequests.has(requestKey)) {
+    return pendingRequests.get(requestKey) as Promise<T>
   }
-  return res.json()
+
+  const requestPromise = (async () => {
+    try {
+      const startTime = performance.now()
+      
+      const res = await fetch(`${API_BASE}${path}`, {
+        ...init,
+        credentials: "include",
+        headers,
+        // Use default cache for GET requests to allow browser caching
+        cache: "default",
+      })
+      
+      const endTime = performance.now()
+      const duration = endTime - startTime
+      
+      // Log slow requests for monitoring
+      if (duration > 1000) {
+        console.warn(`Slow API request: GET ${path} took ${duration.toFixed(2)}ms`)
+      }
+      
+      if (!res.ok) {
+        throw new Error(`GET ${path} failed: ${res.status}`)
+      }
+      
+      return res.json()
+    } finally {
+      // Clean up pending request cache
+      pendingRequests.delete(requestKey)
+    }
+  })()
+  
+  pendingRequests.set(requestKey, requestPromise)
+  return requestPromise as Promise<T>
 }
 
 export async function apiPost<T>(path: string, body?: unknown, init?: RequestInit): Promise<T> {
@@ -35,6 +68,8 @@ export async function apiPost<T>(path: string, body?: unknown, init?: RequestIni
   const auth = getAuthHeader()
   for (const [k, v] of Object.entries(auth)) headers.set(k, v)
 
+  const startTime = performance.now()
+  
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     ...init,
@@ -42,6 +77,15 @@ export async function apiPost<T>(path: string, body?: unknown, init?: RequestIni
     headers,
     body: body ? JSON.stringify(body) : undefined,
   })
+  
+  const endTime = performance.now()
+  const duration = endTime - startTime
+  
+  // Log slow requests for monitoring
+  if (duration > 2000) {
+    console.warn(`Slow API request: POST ${path} took ${duration.toFixed(2)}ms`)
+  }
+  
   if (!res.ok) {
     // Try to surface backend error message if available
     let message = `POST ${path} failed: ${res.status}`
@@ -118,5 +162,41 @@ export async function apiDelete<T>(path: string, init?: RequestInit): Promise<T>
     throw new Error(`DELETE ${path} failed: ${res.status}`)
   }
   return res.json()
+}
+
+// Performance monitoring utilities
+export const performanceMonitor = {
+  // Measure API response times
+  measureApiCall: async <T>(name: string, apiCall: () => Promise<T>): Promise<T> => {
+    const start = performance.now()
+    try {
+      const result = await apiCall()
+      const end = performance.now()
+      const duration = end - start
+      
+      if (duration > 1000) {
+        console.warn(`Performance warning: ${name} took ${duration.toFixed(2)}ms`)
+      }
+      
+      return result
+    } catch (error) {
+      const end = performance.now()
+      const duration = end - start
+      console.error(`Performance error: ${name} failed after ${duration.toFixed(2)}ms`, error)
+      throw error
+    }
+  },
+  
+  // Clear request cache if needed
+  clearRequestCache: () => {
+    pendingRequests.clear()
+  }
+}
+
+// Utility for optimized settings API calls
+export const settingsApi = {
+  get: () => performanceMonitor.measureApiCall('settings:list', () => apiGet('/settings')),
+  update: (settings: Record<string, string>) => 
+    performanceMonitor.measureApiCall('settings:update', () => apiPost('/settings/bulk', settings))
 }
 
